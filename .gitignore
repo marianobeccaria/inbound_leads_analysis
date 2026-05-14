@@ -28,6 +28,16 @@ dbt/dbt_packages/
 dbt/logs/
 dbt/dbt_modules/
 dbt/.user.yml
+# end dbt Cloud content
+dbt/dbt_internal_packages/
+
+# In case dbt is run from repo root by mistake
+target/
+dbt_packages/
+dbt_internal_packages/
+logs/
+dbt_modules/
+
 
 # dbt local profiles should not be committed
 profiles.yml
@@ -90,4 +100,3 @@ cdk.out/
 .codex
 # Conda
 *.conda
-
