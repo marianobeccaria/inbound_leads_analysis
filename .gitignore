@@ -1,0 +1,87 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.venv/
+venv/
+env/
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+logs/
+
+# dbt
+dbt/target/
+dbt/dbt_packages/
+dbt/logs/
+dbt/dbt_modules/
+dbt/.user.yml
+
+# dbt local profiles should not be committed
+profiles.yml
+dbt/profiles.yml
+
+# Snowflake / private keys / credentials
+*.p8
+*.pem
+*.key
+rsa_key*
+snowflake_key*
+secrets/
+credentials/
+*.token
+
+# Data extracts
+*.csv
+*.tsv
+*.json
+*.jsonl
+*.parquet
+*.avro
+*.xlsx
+*.xls
+
+# Keep seed CSVs if needed for dbt mappings
+!dbt/seeds/*.csv
+
+# Local temp/output folders
+tmp/
+temp/
+output/
+exports/
+downloads/
+
+# Jupyter / notebooks
+.ipynb_checkpoints/
+
+# Misc build/cache
+.cache/
+
+# CDK
+cdk.out/
+.cdk.staging/
+# CDK config/context files are source files
+!cdk/cdk.json
+!cdk/cdk.context.json
+
+# CDK
+cdk.out/
+.cdk.staging/
+# CDK config/context files are source files
+!cdk/cdk.json
+!cdk/cdk.context.json
+
+# Conda
+*.conda
