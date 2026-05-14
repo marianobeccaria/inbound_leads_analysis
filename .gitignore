@@ -83,5 +83,11 @@ cdk.out/
 !cdk/cdk.json
 !cdk/cdk.context.json
 
+# Jupyter / VSCode
+.ipynb_checkpoints/
+.vscode/
+.claude
+.codex
 # Conda
 *.conda
+
