@@ -100,3 +100,7 @@ cdk.out/
 .codex
 # Conda
 *.conda
+
+# Others to ignore
+eda/outputs/
+eda/archive/

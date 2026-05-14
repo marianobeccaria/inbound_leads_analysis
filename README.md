@@ -20,6 +20,110 @@ Sales Outcome
 
 The final solution should support BI dashboards for sales stakeholders, helping them measure conversion rates, sales team performance, funnel drop-offs, objections, and revenue outcomes.
 
+## Technology Stack
+
+| Layer | Technology | Purpose |
+|---|---|---|
+| Source System | PostgreSQL | Source database containing raw Close CRM tables |
+| Data Extraction | Python / SQL | Extract raw source tables from PostgreSQL |
+| Object Storage | Amazon S3 | Landing zone for raw extracted files |
+| Data Warehouse | Snowflake | Central warehouse for raw, cleaned, and analytical data |
+| Transformation | dbt Cloud | SQL-based transformation, testing, documentation, and lineage |
+| Data Modeling | Snowflake + dbt | Bronze, Silver, and Gold medallion architecture |
+| BI / Reporting | BI tool TBD | Dashboards for sales operations and funnel KPIs |
+| Version Control | GitHub | Source control for SQL, dbt models, documentation, and EDA |
+
+## Target Architecture
+
+```text
+PostgreSQL Source Database
+(raw Close CRM tables)
+        |
+        | 1. Extract raw tables using Python / SQL
+        v
+Amazon S3 Landing Zone
+(raw JSON / CSV / Parquet files partitioned by load date)
+        |
+        | 2. Snowflake external stage + COPY INTO
+        v
+Snowflake BRONZE Schema
+(raw loaded data with minimal transformation)
+        |
+        | 3. dbt staging and cleaning models
+        v
+Snowflake SILVER Schema
+(cleaned, flattened, deduplicated, normalized data)
+        |
+        | 4. dbt marts and business logic models
+        v
+Snowflake GOLD Schema
+(facts, dimensions, funnel models, KPI report views)
+        |
+        | 5. BI dashboard
+        v
+Business Reporting
+(inbound setter, outbound setter, closer, objections)
+```
+
+## Data Warehousing Strategy
+
+Snowflake is used as the central analytical data warehouse. The warehouse is organized using a medallion architecture:
+
+```text
+BRONZE -> SILVER -> GOLD
+```
+
+The Snowflake database for this project is:
+
+```text
+INBOUND_LEADS
+```
+
+The expected schemas are:
+
+```text
+INBOUND_LEADS.BRONZE
+INBOUND_LEADS.SILVER
+INBOUND_LEADS.GOLD
+INBOUND_LEADS.DBT_DEV
+```
+
+### Why Snowflake Is Used
+
+Snowflake is used because this project requires a data warehouse that can:
+
+- Store raw semi-structured JSON data.
+- Query and flatten nested JSON using SQL.
+- Separate raw, cleaned, and business-ready data by schema.
+- Support scalable SQL transformations through dbt.
+- Serve stable Gold-layer reporting views to BI dashboards.
+- Maintain deduplicated, auditable records for repeatable reporting.
+
+### dbt Usage
+
+dbt Cloud is used for the transformation layer. The dbt project is stored under:
+
+```text
+dbt/
+```
+
+dbt is responsible for:
+
+- Defining Snowflake source tables.
+- Building Silver and Gold models.
+- Applying data quality tests.
+- Documenting model lineage.
+- Creating reusable macros for deduplication and hashing.
+- Supporting development and production deployment workflows.
+
+EDA and project documentation live outside the dbt project:
+
+```text
+eda/
+docs/
+README.md
+```
+
 ## Source Data
 
 The source system is PostgreSQL. Raw source tables are provided under the `raw` schema.
@@ -150,29 +254,6 @@ Metrics:
 - Count by objection category
 - Percentage by objection category
 
-## Architecture
-
-The project should use a Snowflake medallion architecture:
-
-```text
-PostgreSQL / S3 Raw Files
-        |
-        v
-Bronze Layer
-Raw loaded JSON / variant tables
-        |
-        v
-Silver Layer
-Parsed, flattened, deduplicated, normalized activity data
-        |
-        v
-Gold Layer
-Business facts, dimensions, funnel models, KPI views
-        |
-        v
-BI Dashboard
-```
-
 ## Bronze Layer
 
 The Bronze layer preserves raw source data with minimal transformation.
@@ -180,10 +261,10 @@ The Bronze layer preserves raw source data with minimal transformation.
 Suggested Bronze tables:
 
 ```text
-BRONZE.CLOSE_CRM_USERS_RAW
-BRONZE.CUSTOM_ACTIVITIES_RAW
-BRONZE.LEAD_ACTIVITIES_RAW
-BRONZE.LEADS_RAW
+INBOUND_LEADS.BRONZE.CLOSE_CRM_USERS_RAW
+INBOUND_LEADS.BRONZE.CUSTOM_ACTIVITIES_RAW
+INBOUND_LEADS.BRONZE.LEAD_ACTIVITIES_RAW
+INBOUND_LEADS.BRONZE.LEADS_RAW
 ```
 
 Recommended common columns:
@@ -204,17 +285,17 @@ The Silver layer cleans, repairs, flattens, deduplicates, and normalizes the sou
 Suggested Silver tables:
 
 ```text
-SILVER.USERS
-SILVER.CUSTOM_ACTIVITY_TYPES
-SILVER.CUSTOM_ACTIVITY_FIELDS
-SILVER.CUSTOM_ACTIVITY_CHOICES
-SILVER.LEADS
-SILVER.ACTIVITIES
-SILVER.CUSTOM_ACTIVITY_EVENTS
-SILVER.CALL_EVENTS
-SILVER.SMS_EVENTS
-SILVER.MEETING_EVENTS
-SILVER.NOTE_EVENTS
+INBOUND_LEADS.SILVER.USERS
+INBOUND_LEADS.SILVER.CUSTOM_ACTIVITY_TYPES
+INBOUND_LEADS.SILVER.CUSTOM_ACTIVITY_FIELDS
+INBOUND_LEADS.SILVER.CUSTOM_ACTIVITY_CHOICES
+INBOUND_LEADS.SILVER.LEADS
+INBOUND_LEADS.SILVER.ACTIVITIES
+INBOUND_LEADS.SILVER.CUSTOM_ACTIVITY_EVENTS
+INBOUND_LEADS.SILVER.CALL_EVENTS
+INBOUND_LEADS.SILVER.SMS_EVENTS
+INBOUND_LEADS.SILVER.MEETING_EVENTS
+INBOUND_LEADS.SILVER.NOTE_EVENTS
 ```
 
 Key Silver responsibilities:
@@ -239,34 +320,34 @@ The Gold layer exposes business-ready tables and views for reporting.
 Suggested dimensions:
 
 ```text
-GOLD.DIM_DATE
-GOLD.DIM_USER
-GOLD.DIM_LEAD
-GOLD.DIM_ACTIVITY_TYPE
-GOLD.DIM_OUTCOME
+INBOUND_LEADS.GOLD.DIM_DATE
+INBOUND_LEADS.GOLD.DIM_USER
+INBOUND_LEADS.GOLD.DIM_LEAD
+INBOUND_LEADS.GOLD.DIM_ACTIVITY_TYPE
+INBOUND_LEADS.GOLD.DIM_OUTCOME
 ```
 
 Suggested facts:
 
 ```text
-GOLD.FACT_TRIAGE_CALL
-GOLD.FACT_OUTBOUND_PROSPECTING
-GOLD.FACT_STRATEGY_CALL
-GOLD.FACT_SALE
-GOLD.FACT_LEAD_FUNNEL
-GOLD.FACT_OBJECTION
+INBOUND_LEADS.GOLD.FACT_TRIAGE_CALL
+INBOUND_LEADS.GOLD.FACT_OUTBOUND_PROSPECTING
+INBOUND_LEADS.GOLD.FACT_STRATEGY_CALL
+INBOUND_LEADS.GOLD.FACT_SALE
+INBOUND_LEADS.GOLD.FACT_LEAD_FUNNEL
+INBOUND_LEADS.GOLD.FACT_OBJECTION
 ```
 
 Suggested report views:
 
 ```text
-GOLD.RPT_INBOUND_SETTER
-GOLD.RPT_OUTBOUND_SETTER
-GOLD.RPT_CLOSER
-GOLD.RPT_OBJECTIONS_FACED
+INBOUND_LEADS.GOLD.RPT_INBOUND_SETTER
+INBOUND_LEADS.GOLD.RPT_OUTBOUND_SETTER
+INBOUND_LEADS.GOLD.RPT_CLOSER
+INBOUND_LEADS.GOLD.RPT_OBJECTIONS_FACED
 ```
 
-The most important Gold model is `GOLD.FACT_LEAD_FUNNEL`, which should link events in timestamp order:
+The most important Gold model is `INBOUND_LEADS.GOLD.FACT_LEAD_FUNNEL`, which should link events in timestamp order:
 
 ```text
 lead_id
@@ -321,6 +402,45 @@ Recommended sequence:
 5. Refresh report views.
 6. Track processed files.
 7. Archive or purge processed staged files using date-based patterns.
+```
+
+## Current EDA Findings
+
+Initial PostgreSQL exploration confirmed:
+
+- The source schema contains four raw tables.
+- All raw tables use `raw_data jsonb` and `insert_date`.
+- `lead_activites_raw.raw_data -> 'data'` is an array of activity objects.
+- Flattening this activity array produces more than 500,000 activity records.
+- Activity type is stored in `_type`.
+- `CustomActivity` records use `custom_activity_type_id`.
+- Custom fields are stored as top-level keys like `custom.cf_*`.
+- Custom activity metadata is stored as malformed stringified JSON in `JSON_OBJECT`.
+- Duplicate activities exist across loads and must be deduplicated.
+
+Key activity mappings discovered so far:
+
+```text
+3) Triage Call              = actitype_38341SWOKRkRHHAqWEqSJu
+5) Strategy Call            = actitype_2VcSfZQX6FeIL8kkxy48C2
+6) Strategy Call Follow Up  = actitype_6IrDujYE2WKg9QCFJdpXJk
+7) New Sale                 = actitype_3E85vFq3a06LlEzXT2N1kS
+8) New Sale Custom Plan     = actitype_0FNk72Q8eSYX2MVd4A2UFx
+1) Prospecting Activity     = actitype_4tEv1xumZEk9vYYs7WxYy7
+2) Prospecting Follow Up    = actitype_6ga7msjJ7kZcH2rGtYETwe
+```
+
+Key field mappings discovered so far:
+
+```text
+Triage Call Date       = cf_tHxOwx1Ysk0Xo6sRXhqIHToin8itnyaCHC1vkmHqugh
+Triage Call Outcome    = cf_h3tYb9J6yPK7J4PMExDGsEqPCf8kBGBrRNIur2Dm5aN
+Strategy Call Outcome  = cf_dhJR4N7Rm6czuJthYGJP6KqUcuOzi7fqApGI7puWnMo
+Offer Presented        = cf_LGyzSTMPy37y87rDOUmFXlZA42HPSIpbipeT2OsQNHW
+Objections Faced       = cf_aIN5Gtqq33tUCCBxFTW63FY6d3mofnKIfFqfWPkvNla
+Contract Value         = cf_vIanPjPEit6ssajmWkcprF2V1nO1itfes8hOSnjmhfT
+Cash Collected         = cf_eyLbGJm9DYY7cuJk2otnCxhUEzK9ayEARiE81xPG5uY
+Prospecting Outcome    = cf_Q2fsrD8VpPaunZLtyiy7P3vG6qJTv0w1ESmlhdHU2ra
 ```
 
 ## Implementation Risks
