@@ -1,3 +1,14 @@
+/*
+    Silver model for individual Close CRM activity events.
+
+    Source:
+      stg_bronze__lead_activities_raw.
+
+    Purpose:
+      Convert each raw activity array item into one relational row. This is the
+      base event table for calls, SMS, meetings, notes, and CustomActivity rows.
+*/
+
 with source as (
     select *
     from {{ ref('stg_bronze__lead_activities_raw') }}
@@ -5,6 +16,7 @@ with source as (
 
 flattened as (
     select
+        -- FLATTEN turns each JSON array element in RAW_DATA:data into one row.
         activity.value as activity,
         activity.index as activity_array_index,
         source.source_file_name,
@@ -17,6 +29,7 @@ flattened as (
 )
 
 select
+    -- These fields identify the event and connect it back to a Close CRM lead.
     activity:id::string as activity_id,
     activity:lead_id::string as lead_id,
     activity:_type::string as activity_type,

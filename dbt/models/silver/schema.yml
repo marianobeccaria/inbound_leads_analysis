@@ -1,0 +1,56 @@
+version: 2
+
+models:
+  - name: silver_activities
+    description: One row per Close CRM activity after flattening BRONZE.LEAD_ACTIVITIES_RAW.RAW_DATA:data.
+    columns:
+      - name: activity_id
+        description: Close CRM activity identifier.
+        tests:
+          - not_null
+      - name: lead_id
+        description: Close CRM lead identifier associated with the activity.
+        tests:
+          - not_null
+      - name: activity_type
+        description: Close CRM activity type, such as CustomActivity, Call, SMS, Email, Meeting, or Note.
+        tests:
+          - not_null
+      - name: custom_activity_type_id
+        description: Close CRM custom activity type identifier, populated for CustomActivity rows.
+      - name: activity_at
+        description: Timestamp when the activity occurred.
+      - name: activity_updated_at
+        description: Timestamp when the activity was last updated.
+      - name: activity
+        description: Original individual activity JSON object.
+        tests:
+          - not_null
+
+  - name: silver_custom_activity_events
+    description: Deduplicated CustomActivity events used as the base for funnel modeling.
+    columns:
+      - name: activity_id
+        description: Close CRM activity identifier.
+        tests:
+          - not_null
+      - name: lead_id
+        description: Close CRM lead identifier associated with the custom activity.
+        tests:
+          - not_null
+      - name: custom_activity_type_id
+        description: Business-specific Close CRM custom activity type identifier.
+        tests:
+          - not_null
+      - name: activity_at
+        description: Timestamp when the custom activity occurred.
+      - name: activity_updated_at
+        description: Timestamp used to retain the latest repeated activity version.
+      - name: row_number_latest
+        description: Deduplication rank. This model keeps only row_number_latest = 1.
+        tests:
+          - not_null
+      - name: activity
+        description: Original individual custom activity JSON object.
+        tests:
+          - not_null
