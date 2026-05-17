@@ -101,11 +101,7 @@ Snowflake is used because this project requires a data warehouse that can:
 
 ### dbt Usage
 
-dbt Cloud is used for the transformation layer. The dbt project is stored under:
-
-```text
-dbt/
-```
+dbt Cloud is used for the transformation layer. The dbt project is stored under folder `dbt/`
 
 dbt is responsible for:
 
@@ -138,6 +134,239 @@ custom_activites_raw
 ```
 
 The source data is refreshed daily by `07:30 AM EST`.
+
+## Raw Data Extraction to S3
+
+Raw PostgreSQL tables are exported from the source `raw` schema and landed in S3 as newline-delimited JSON files.
+
+Target S3 layout:
+
+```text
+s3://mbeccaria-dea-inbound-leads/inbound-leads/raw/leads_raw/load_date=YYYY-MM-DD/
+s3://mbeccaria-dea-inbound-leads/inbound-leads/raw/lead_activites_raw/load_date=YYYY-MM-DD/
+s3://mbeccaria-dea-inbound-leads/inbound-leads/raw/custom_activites_raw/load_date=YYYY-MM-DD/
+s3://mbeccaria-dea-inbound-leads/inbound-leads/raw/close_crm_users_raw/load_date=YYYY-MM-DD/
+```
+
+Use psql unaligned, tuples-only output to avoid PostgreSQL COPY escaping issues that can produce files Snowflake cannot parse as JSON.
+
+Example export command for leads_raw:
+
+```bash
+psql -h dea.cgyi97rb4alr.us-east-1.rds.amazonaws.com -p 5432 -U student_user -d dea_analytics_dev \
+  -A -t \
+  -c "
+      SELECT jsonb_build_object(
+          'raw_data', raw_data,
+          'insert_date', insert_date
+      )::text
+      FROM raw.leads_raw;
+  " \
+| aws s3 cp - s3://mbeccaria-dea-inbound-leads/inbound-leads/raw/leads_raw/load_date=2026-05-16/leads_raw_2026-05-16.jsonl
+```
+
+Example export command for lead_activites_raw:
+
+```bash
+psql -h dea.cgyi97rb4alr.us-east-1.rds.amazonaws.com -p 5432 -U student_user -d dea_analytics_dev \
+  -A -t \
+  -c "
+      SELECT jsonb_build_object(
+          'raw_data', raw_data,
+          'insert_date', insert_date
+      )::text
+      FROM raw.lead_activites_raw;
+  " \
+| aws s3 cp -
+s3://mbeccaria-dea-inbound-leads/inbound-leads/raw/lead_activites_raw/load_date=2026-05-16/lead_activites_raw_2026-05-16.jsonl
+```
+
+Example export command for custom_activites_raw:
+
+```bash
+psql -h dea.cgyi97rb4alr.us-east-1.rds.amazonaws.com -p 5432 -U student_user -d dea_analytics_dev \
+  -A -t \
+  -c "
+      SELECT jsonb_build_object(
+          'raw_data', raw_data,
+          'insert_date', insert_date
+      )::text
+      FROM raw.custom_activites_raw;
+  " \
+| aws s3 cp -
+s3://mbeccaria-dea-inbound-leads/inbound-leads/raw/custom_activites_raw/load_date=2026-05-16/custom_activites_raw_2026-05-16.jsonl
+```
+
+Example export command for close_crm_users_raw:
+
+```bash
+psql -h dea.cgyi97rb4alr.us-east-1.rds.amazonaws.com -p 5432 -U student_user -d dea_analytics_dev \
+  -A -t \
+  -c "
+      SELECT jsonb_build_object(
+          'raw_data', raw_data,
+          'insert_date', insert_date
+      )::text
+      FROM raw.close_crm_users_raw;
+  " \
+| aws s3 cp -
+s3://mbeccaria-dea-inbound-leads/inbound-leads/raw/close_crm_users_raw/load_date=2026-05-16/close_crm_users_raw_2026-05-16.jsonl
+```
+
+Validate landed files in S3:
+
+```bash
+aws s3 ls s3://mbeccaria-dea-inbound-leads/inbound-leads/raw/ --recursive --human-readable --summarize
+```
+
+If Snowflake reports a malformed JSON row, inspect the failing line from S3:
+
+```bash
+aws s3 cp s3://mbeccaria-dea-inbound-leads/inbound-leads/raw/leads_raw/load_date=2026-05-16/leads_raw_2026-05-16.jsonl - \
+  | sed -n '313,315p'
+```
+
+## Snowflake S3 Integration and Bronze Load
+
+Snowflake reads the raw files from S3 through a storage integration and external stage.
+
+
+The S3 stage used by the Bronze load scripts is:
+
+`INBOUND_LEADS.BRONZE.S3_RAW_LANDING_STAGE`
+
+Storage integration example:
+
+```sql
+CREATE OR REPLACE STORAGE INTEGRATION STORINT_AWS_419022_01
+  TYPE = EXTERNAL_STAGE
+  STORAGE_PROVIDER = 'S3'
+  ENABLED = TRUE
+  STORAGE_AWS_ROLE_ARN = 'arn:aws:iam::YOUR-AWS_ACCOUNT:role/YOUR-SNOWFLAKE-ROLE'
+  STORAGE_ALLOWED_LOCATIONS = (
+    's3://mbeccaria-dea-inbound-leads/inbound-leads/raw/',
+  );
+```
+
+After creating or replacing the integration, run:
+
+```sql
+DESC INTEGRATION STORINT_AWS_419022_01;
+SHOW INTEGRATIONS;
+```
+
+Use the `STORAGE_AWS_IAM_USER_ARN` and `STORAGE_AWS_EXTERNAL_ID` values from `DESC INTEGRATION` to configure the AWS IAM role trust policy. 
+If `CREATE OR REPLACE STORAGE INTEGRATION` is run again, re-check the external ID because the AWS trust policy may need to be updated.
+
+Create the JSON file format and stage:
+
+```sql
+USE DATABASE INBOUND_LEADS;
+USE SCHEMA BRONZE;
+
+CREATE FILE FORMAT IF NOT EXISTS JSON_LANDING_FORMAT
+    TYPE = JSON
+    STRIP_OUTER_ARRAY = FALSE
+    IGNORE_UTF8_ERRORS = TRUE
+    COMPRESSION = AUTO;
+
+CREATE STAGE IF NOT EXISTS S3_RAW_LANDING_STAGE
+    URL = 's3://mbeccaria-dea-inbound-leads/inbound-leads/raw/'
+    STORAGE_INTEGRATION = STORINT_AWS_419022_01
+    FILE_FORMAT = JSON_LANDING_FORMAT;
+
+Validate Snowflake can see S3 objects:
+
+LIST @S3_RAW_LANDING_STAGE;
+
+Test JSON parsing before running COPY INTO:
+
+SELECT
+    $1,
+    METADATA$FILENAME,
+    METADATA$FILE_ROW_NUMBER
+FROM @S3_RAW_LANDING_STAGE/leads_raw/
+LIMIT 10;
+```
+
+Run the Snowflake Bronze scripts in this order:
+
+```text
+snowflake/01_bronze_ddl.sql
+snowflake/02_bronze_stage.sql
+snowflake/03_bronze_copy_into.sql
+```
+
+Validate Bronze row counts after loading:
+
+```sql
+USE DATABASE INBOUND_LEADS;
+USE SCHEMA BRONZE;
+
+SELECT 'LEADS_RAW' AS table_name, COUNT(*) AS row_count FROM LEADS_RAW
+UNION ALL
+SELECT 'LEAD_ACTIVITIES_RAW', COUNT(*) FROM LEAD_ACTIVITIES_RAW
+UNION ALL
+SELECT 'CUSTOM_ACTIVITIES_RAW', COUNT(*) FROM CUSTOM_ACTIVITIES_RAW
+UNION ALL
+SELECT 'CLOSE_CRM_USERS_RAW', COUNT(*) FROM CLOSE_CRM_USERS_RAW;
+```
+
+Validate files loaded into each Bronze table:
+
+```sql
+SELECT
+    SOURCE_FILE_NAME,
+    COUNT(*) AS rows_loaded,
+    MIN(INSERT_DATE) AS min_insert_date,
+    MAX(INSERT_DATE) AS max_insert_date
+FROM BRONZE.LEAD_ACTIVITIES_RAW
+GROUP BY SOURCE_FILE_NAME
+ORDER BY SOURCE_FILE_NAME;
+```
+
+## dbt Cloud and Snowflake Setup
+
+dbt Cloud is used to transform Bronze data into Silver and Gold models.
+
+The dbt project lives in the `dbt/` directory.
+
+Recommended dbt Cloud connection settings:
+
+```text
+Data platform:      Snowflake
+Database:           INBOUND_LEADS
+Development schema: DBT_DEV
+Target schemas:     SILVER and GOLD, configured by model
+Warehouse:          project warehouse assigned in Snowflake
+Role:               role with access to 
+                        INBOUND_LEADS.BRONZE, 
+                        INBOUND_LEADS.SILVER, 
+                        INBOUND_LEADS.GOLD, and 
+                        INBOUND_LEADS.DBT_DEV
+```
+
+The first dbt implementation tasks are:
+
+1. Rename the starter dbt project from `my_new_project` to the project-specific name.
+2. Add dbt sources for `INBOUND_LEADS.BRONZE`.
+3. Build staging models for the four Bronze raw tables.
+4. Flatten `BRONZE.LEAD_ACTIVITIES_RAW.RAW_DATA:data` into a Silver activity model.
+5. Deduplicate activity records using `lead_id + activity_id`.
+6. Build Silver custom activity event models.
+7. Build Gold fact and report models from the deduplicated Silver layer.
+
+The most important Silver deduplication rule is:
+
+```sql
+ROW_NUMBER() OVER (
+    PARTITION BY lead_id, activity_id
+    ORDER BY date_updated DESC NULLS LAST, activity_at DESC NULLS LAST
+) = 1
+```
+
+This rule is required because daily extracts can repeat historical activity records, and the latest version of each activity should be
+retained for reporting.
 
 ## Key Data Characteristics
 
