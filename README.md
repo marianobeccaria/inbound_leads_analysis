@@ -30,7 +30,7 @@ The final solution should support BI dashboards for sales stakeholders, helping 
 | Data Warehouse | Snowflake | Central warehouse for raw, cleaned, and analytical data |
 | Transformation | dbt Cloud | SQL-based transformation, testing, documentation, and lineage |
 | Data Modeling | Snowflake + dbt | Bronze, Silver, and Gold medallion architecture |
-| BI / Reporting | BI tool TBD | Dashboards for sales operations and funnel KPIs |
+| BI / Reporting | Streamlit in Snowflake | Dashboards for sales operations and funnel KPIs |
 | Version Control | GitHub | Source control for SQL, dbt models, documentation, and EDA |
 
 ## Target Architecture
@@ -59,7 +59,7 @@ Snowflake SILVER Schema
 Snowflake GOLD Schema
 (facts, dimensions, funnel models, KPI report views)
         |
-        | 5. BI dashboard
+        | 5. Stramlit dashboard (provided by Snowflake)
         v
 Business Reporting
 (inbound setter, outbound setter, closer, objections)
@@ -368,6 +368,73 @@ ROW_NUMBER() OVER (
 This rule is required because daily extracts can repeat historical activity records, and the latest version of each activity should be
 retained for reporting.
 
+### dbt Model Flow and Documentation
+
+The dbt project is under `dbt/`. In dbt Cloud, set the project subdirectory to:
+
+```text
+dbt
+```
+
+For local development, activate the project environment and run dbt commands from the `dbt/` directory:
+
+```bash
+conda activate dea-cdk
+cd dbt
+which dbt
+dbt debug
+dbt parse
+dbt run --select bronze silver gold
+dbt test
+dbt docs generate
+dbt docs serve
+```
+
+`which dbt` should point to the `dea-cdk` conda environment. If another dbt executable appears first on `PATH`, run commands through `conda run -n dea-cdk`, for example `conda run -n dea-cdk dbt docs generate`.
+
+Generated dbt documentation is available locally after `dbt docs generate`: [dbt docs](dbt/target/index.html).
+
+When `dbt docs serve` is running, open the served local URL shown in the terminal. The dbt docs provide the full model lineage, source definitions, column descriptions, and tests, so this README keeps only the operational summary.
+
+Current dbt model flow:
+
+```text
+Sources:
+  INBOUND_LEADS.BRONZE.LEADS_RAW
+  INBOUND_LEADS.BRONZE.LEAD_ACTIVITIES_RAW
+  INBOUND_LEADS.BRONZE.CUSTOM_ACTIVITIES_RAW
+  INBOUND_LEADS.BRONZE.CLOSE_CRM_USERS_RAW
+
+Bronze dbt staging:
+  stg_bronze__leads_raw
+  stg_bronze__lead_activities_raw
+  stg_bronze__custom_activities_raw
+  stg_bronze__close_crm_users_raw
+
+Silver:
+  silver_activities
+  silver_custom_activity_events
+
+Gold dimensions:
+  dim_user
+  dim_lead
+
+Gold fact:
+  fact_lead_funnel
+
+Gold BI-ready reports:
+  rpt_inbound_setter
+  rpt_outbound_setter
+  rpt_closer
+  rpt_objections_faced
+```
+
+The Streamlit in Snowflake dashboard connects to the Gold report models first. `dim_user`, `dim_lead`, and `fact_lead_funnel` are available for drilldowns and custom analysis.
+
+Dashboard setup and permissions are documented in [Streamlit Dashboard](docs/STREAMLIT_APP.md).
+
+`dim_date` is optional for the current dashboard scope. It becomes useful when the BI layer needs shared calendar logic, fiscal periods, month/week labels, or consistent date filters across multiple facts.
+
 ## Key Data Characteristics
 
 - Lead activity records are delivered as nested JSON.
@@ -614,7 +681,7 @@ funnel_source
 14. Validate KPI output against source samples.
 15. Schedule daily orchestration after the source refresh.
 16. Run the pipeline for 7 daily loads to simulate production.
-17. Connect the Gold layer to a BI dashboard.
+17. Connect the Gold layer to a Streamlit in Snowflake dashboard.
 18. Document the architecture, ERD, assumptions, and known edge cases.
 
 ## Orchestration Plan

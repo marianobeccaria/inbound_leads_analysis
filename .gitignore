@@ -97,10 +97,12 @@ cdk.out/
 .ipynb_checkpoints/
 .vscode/
 .claude
-.codex
+.codex 
+.agents/
 # Conda
 *.conda
 
 # Others to ignore
 eda/outputs/
 eda/archive/
+docs/mynotes/
