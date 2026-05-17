@@ -1,5 +1,9 @@
 # Inbound Leads Analytics
 
+<p>
+  <img src="docs/images/streamlit_executivesum.png" alt="Dashboard home page" width="500">
+</p>
+
 ## Project Overview
 
 This project designs and implements an end-to-end data engineering pipeline for sales analytics. The goal is to provide a unified analytical view of inbound and outbound sales performance using Close CRM source data.
@@ -370,16 +374,13 @@ retained for reporting.
 
 ### dbt Model Flow and Documentation
 
-The dbt project is under `dbt/`. In dbt Cloud, set the project subdirectory to:
+The dbt project is under `dbt/`. 
+Also in dbt Cloud (`Dashboard > Your-Project > Settings`), the project subdirectory should be set to: `dbt/`
 
-```text
-dbt
-```
-
-For local development, activate the project environment and run dbt commands from the `dbt/` directory:
+For local development, you can activate the project environment and run dbt commands from the `dbt/` directory:
 
 ```bash
-conda activate dea-cdk
+conda activate dea-cdk     (Note: my conda environment name is dea-cdk)
 cd dbt
 which dbt
 dbt debug
@@ -390,13 +391,13 @@ dbt docs generate
 dbt docs serve
 ```
 
-`which dbt` should point to the `dea-cdk` conda environment. If another dbt executable appears first on `PATH`, run commands through `conda run -n dea-cdk`, for example `conda run -n dea-cdk dbt docs generate`.
+> **Note:**  Verify that dbt points to your conda or pyenv environment (`which dbt` in Linux and Mac ). If another dbt executable appears first on `PATH`, run commands through `conda run -n dea-cdk`, for example `conda run -n dea-cdk dbt docs generate`.
 
 Generated dbt documentation is available locally after `dbt docs generate`: [dbt docs](dbt/target/index.html).
 
 When `dbt docs serve` is running, open the served local URL shown in the terminal. The dbt docs provide the full model lineage, source definitions, column descriptions, and tests, so this README keeps only the operational summary.
 
-Current dbt model flow:
+**Current dbt model flow:**
 
 ```text
 Sources:
@@ -433,7 +434,7 @@ The Streamlit in Snowflake dashboard connects to the Gold report models first. `
 
 Dashboard setup and permissions are documented in [Streamlit Dashboard](docs/STREAMLIT_APP.md).
 
-`dim_date` is optional for the current dashboard scope. It becomes useful when the BI layer needs shared calendar logic, fiscal periods, month/week labels, or consistent date filters across multiple facts.
+**TODO (optional):** It would be nice to add `dim_date` but I considered it as optional for the current dashboard scope. It can become useful when the BI layer needs shared calendar logic, fiscal periods, month/week labels, or consistent date filters across multiple facts.
 
 ## Key Data Characteristics
 
@@ -463,14 +464,23 @@ Inbound leads begin with a triage call. Outbound leads begin with prospecting ac
 Example successful inbound journey:
 
 ```text
-Triage Call
-  Outcome: Strategy Call Booked
-
-Strategy Call
-  Outcome: Sale
-
-Sale Recorded
-  Contracted Value and Cash Collected captured
+----------------------------------
+|          Triage Call           |
+|  Outcome: Strategy Call Booked |
+----------------------------------
+              |
+              v
+----------------------------------
+|         Strategy Call          |
+|         Outcome: Sale          |
+----------------------------------
+              |
+              v
+----------------------------------
+|       Sale Recorded            |
+|     Contracted Value and       |
+|     Cash Collected captured    |
+----------------------------------
 ```
 
 This hierarchy is important because all KPI logic depends on linking activities in the correct sequence. Without sequence-aware funnel modeling, the pipeline may double-count activities or misclassify leads.
@@ -663,7 +673,7 @@ objection_category
 funnel_source
 ```
 
-## Processing Plan
+## Plan To Process Data
 
 1. Confirm business definitions and funnel mapping with the SME.
 2. Create Snowflake database, schemas, stages, and file formats.
@@ -705,13 +715,13 @@ Recommended sequence:
 Initial PostgreSQL exploration confirmed:
 
 - The source schema contains four raw tables.
-- All raw tables use `raw_data jsonb` and `insert_date`.
+- All raw tables use `raw_data` jsonb data type and `insert_date`.
 - `lead_activites_raw.raw_data -> 'data'` is an array of activity objects.
 - Flattening this activity array produces more than 500,000 activity records.
-- Activity type is stored in `_type`.
+- Activity type is stored in `_type` filed.
 - `CustomActivity` records use `custom_activity_type_id`.
 - Custom fields are stored as top-level keys like `custom.cf_*`.
-- Custom activity metadata is stored as malformed stringified JSON in `JSON_OBJECT`.
+- Custom activity metadata is stored as malformed stringified JSON in JSON_OBJECT.
 - Duplicate activities exist across loads and must be deduplicated.
 
 Key activity mappings discovered so far:

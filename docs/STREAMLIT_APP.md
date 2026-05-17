@@ -14,6 +14,19 @@ streamlit/inbound_leads_dashboard.py
 Paste this file into the Snowflake Streamlit editor when creating or updating the
 app.
 
+## Dashboard Features
+
+The dashboard includes:
+
+- Executive Summary tab with top-level sales, revenue, collection, and funnel
+  rate KPIs.
+- Inbound Setters tab with setter-level sales performance.
+- Outbound Setters tab with outbound set volume and conversion performance.
+- Closers tab with show, sale, and revenue performance.
+- Objections tab with normalized objection counts.
+- Sidebar filters for inbound setters, outbound setters, and closers.
+- Formatted percentage and currency columns in the detail tables.
+
 ## Snowflake Objects
 
 The app currently queries:
@@ -75,3 +88,19 @@ SELECT * FROM INBOUND_LEADS.DBT_DEV_GOLD.RPT_OUTBOUND_SETTER LIMIT 10;
 SELECT * FROM INBOUND_LEADS.DBT_DEV_GOLD.RPT_CLOSER LIMIT 10;
 SELECT * FROM INBOUND_LEADS.DBT_DEV_GOLD.RPT_OBJECTIONS_FACED LIMIT 10;
 ```
+
+## Dashboard Pages
+
+<p>
+  <img src="./images/streamlit_executivesum.png" alt="Dashboard home page" width="350">
+  <img src="./images/streamlit_inbound_setters.png" alt="Inbound Setters page" width="350">
+</p>
+
+<p>
+  <img src="./images/streamlit_outound_setters.png" alt="Outbound Setters page" width="350">
+  <img src="./images/streamlit_closers.png" alt="Closers page" width="350">
+</p>
+
+<p>
+  <img src="./images/streamlit_objections.png" alt="Objections page" width="350">
+</p>
