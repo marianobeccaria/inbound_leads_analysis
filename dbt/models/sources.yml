@@ -1,0 +1,12 @@
+version: 2
+
+sources:
+  - name: bronze
+    database: INBOUND_LEADS
+    schema: BRONZE
+
+    tables:
+      - name: LEADS_RAW
+      - name: LEAD_ACTIVITIES_RAW
+      - name: CLOSE_CRM_USERS_RAW
+      - name: CUSTOM_ACTIVITIES_RAW
