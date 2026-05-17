@@ -1,0 +1,80 @@
+version: 2
+
+models:
+  - name: stg_bronze__leads_raw
+    description: Staging view over raw Close CRM leads with common lead fields extracted from RAW_DATA.
+    columns:
+      - name: lead_id
+        description: Close CRM lead identifier extracted from RAW_DATA:id.
+        tests:
+          - not_null
+      - name: lead_updated_at
+        description: Timestamp when the lead was last updated in Close CRM.
+      - name: source_file_name
+        description: S3 object name loaded into the Bronze table.
+        tests:
+          - not_null
+      - name: source_row_number
+        description: Row number inside the source S3 file.
+        tests:
+          - not_null
+      - name: raw_data
+        description: Original raw lead JSON payload.
+        tests:
+          - not_null
+
+  - name: stg_bronze__lead_activities_raw
+    description: Staging view over raw activity wrapper rows. Each row contains an ACTIVITY_DATA JSON array.
+    columns:
+      - name: activity_data
+        description: JSON array under RAW_DATA:data that is flattened in Silver.
+        tests:
+          - not_null
+      - name: source_file_name
+        description: S3 object name loaded into the Bronze table.
+        tests:
+          - not_null
+      - name: source_row_number
+        description: Row number inside the source S3 file.
+        tests:
+          - not_null
+      - name: raw_data
+        description: Original raw activity wrapper JSON payload.
+        tests:
+          - not_null
+
+  - name: stg_bronze__custom_activities_raw
+    description: Staging view over raw Close CRM custom activity metadata.
+    columns:
+      - name: json_object_text
+        description: Single-quoted JSON-like metadata text from RAW_DATA:JSON_OBJECT.
+      - name: source_file_name
+        description: S3 object name loaded into the Bronze table.
+        tests:
+          - not_null
+      - name: source_row_number
+        description: Row number inside the source S3 file.
+        tests:
+          - not_null
+      - name: raw_data
+        description: Original raw custom activity metadata payload.
+        tests:
+          - not_null
+
+  - name: stg_bronze__close_crm_users_raw
+    description: Staging view over raw Close CRM user metadata.
+    columns:
+      - name: json_object_text
+        description: Single-quoted JSON-like user metadata text from RAW_DATA:JSON_OBJECT.
+      - name: source_file_name
+        description: S3 object name loaded into the Bronze table.
+        tests:
+          - not_null
+      - name: source_row_number
+        description: Row number inside the source S3 file.
+        tests:
+          - not_null
+      - name: raw_data
+        description: Original raw user metadata payload.
+        tests:
+          - not_null

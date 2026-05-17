@@ -1,0 +1,113 @@
+version: 2
+
+models:
+  - name: dim_user
+    description: Close CRM user dimension parsed from raw user metadata.
+    columns:
+      - name: user_id
+        description: Close CRM user identifier.
+        tests:
+          - unique
+          - not_null
+      - name: email
+        description: User email address from Close CRM metadata.
+      - name: full_name
+        description: User first and last name combined for reporting.
+
+  - name: dim_lead
+    description: Close CRM lead dimension deduplicated to the latest lead record.
+    columns:
+      - name: lead_id
+        description: Close CRM lead identifier.
+        tests:
+          - unique
+          - not_null
+      - name: lead_name
+        description: Lead name from Close CRM.
+      - name: status_label
+        description: Current lead status label from Close CRM.
+
+  - name: fact_lead_funnel
+    description: Ordered lead funnel paths from initial contact to strategy call to sale.
+    columns:
+      - name: lead_funnel_id
+        description: Hash key for the matched funnel path.
+        tests:
+          - unique
+          - not_null
+      - name: lead_id
+        description: Close CRM lead identifier.
+        tests:
+          - not_null
+      - name: initial_activity_id
+        description: Initial contact activity identifier.
+        tests:
+          - not_null
+      - name: funnel_source
+        description: Inbound or outbound funnel source.
+      - name: path_category
+        description: Funnel path completion category.
+
+  - name: rpt_inbound_setter
+    description: Inbound setter KPI report aggregated from ordered funnel paths.
+    columns:
+      - name: setter_user_id
+        description: Close CRM user ID for the inbound setter.
+        tests:
+          - not_null
+      - name: inbound_booked
+        description: Count of inbound initial contact paths.
+      - name: inbound_taken
+        description: Inbound triage calls excluding no-shows, reschedules, cancels, and blanks.
+      - name: triage_set
+        description: Inbound triage calls where the outcome was Strategy Call Scheduled.
+      - name: total_sales
+        description: Count of linked New Sale activity records after the strategy call.
+
+  - name: rpt_outbound_setter
+    description: Outbound setter KPI report aggregated from ordered funnel paths.
+    columns:
+      - name: setter_user_id
+        description: Close CRM user ID for the outbound setter.
+        tests:
+          - not_null
+      - name: total_outbound_calls
+        description: Count of outbound initial contact paths.
+      - name: unique_leads_touched
+        description: Distinct leads touched by outbound initial contact paths.
+      - name: outbound_set
+        description: Outbound prospecting records where outcome was Strategy Call Scheduled.
+      - name: total_closer_show
+        description: Strategy calls excluding cancels, no-shows, reschedules, and blanks.
+      - name: total_sales
+        description: Count of linked New Sale activity records after the strategy call.
+
+  - name: rpt_closer
+    description: Closer KPI report aggregated from strategy-call funnel paths.
+    columns:
+      - name: closer_user_id
+        description: Close CRM user ID for the closer.
+        tests:
+          - not_null
+      - name: calls_booked
+        description: Count of linked strategy call activities.
+      - name: shows
+        description: Strategy calls excluding cancels, no-shows, reschedules, and blanks.
+      - name: sales
+        description: Count of linked New Sale activity records after the strategy call.
+      - name: total_cash_collected
+        description: Sum of cash collected from linked sale records.
+
+  - name: rpt_objections_faced
+    description: Objection category report from strategy-call Objections Faced values.
+    columns:
+      - name: objection_category
+        description: Normalized objection category.
+        tests:
+          - not_null
+      - name: objection_count
+        description: Count of objection values after flattening multi-select fields.
+      - name: distinct_strategy_call_count
+        description: Distinct strategy calls with this objection category.
+      - name: strategy_call_percentage
+        description: Share of evaluated strategy calls that had this objection category.

@@ -1,0 +1,102 @@
+-- Bronze COPY INTO commands.
+-- Expected S3 layout:
+--   s3://YOUR_BUCKET/inbound-leads/raw/leads_raw/
+--   s3://YOUR_BUCKET/inbound-leads/raw/lead_activites_raw/
+--   s3://YOUR_BUCKET/inbound-leads/raw/custom_activites_raw/
+--   s3://YOUR_BUCKET/inbound-leads/raw/close_crm_users_raw/
+--
+-- These COPY statements support either wrapped rows:
+--   {"raw_data": {...}, "insert_date": "2026-05-16 07:30:00"}
+-- or direct raw JSON payload rows:
+--   {"id": "...", "...": "..."}
+
+USE DATABASE INBOUND_LEADS;
+USE SCHEMA BRONZE;
+
+COPY INTO LEADS_RAW (
+    RAW_DATA,
+    SOURCE_FILE_NAME,
+    SOURCE_ROW_NUMBER,
+    LOAD_DATE,
+    INSERT_DATE
+)
+FROM (
+    SELECT
+        IFF($1:raw_data IS NOT NULL, $1:raw_data, $1) AS RAW_DATA,
+        METADATA$FILENAME AS SOURCE_FILE_NAME,
+        METADATA$FILE_ROW_NUMBER AS SOURCE_ROW_NUMBER,
+        CURRENT_DATE() AS LOAD_DATE,
+        COALESCE(
+            TRY_TO_TIMESTAMP_NTZ($1:insert_date::STRING),
+            CURRENT_TIMESTAMP()::TIMESTAMP_NTZ
+        ) AS INSERT_DATE
+    FROM @S3_RAW_LANDING_STAGE/leads_raw/
+)
+FILE_FORMAT = (FORMAT_NAME = JSON_LANDING_FORMAT)
+ON_ERROR = ABORT_STATEMENT;
+
+COPY INTO LEAD_ACTIVITIES_RAW (
+    RAW_DATA,
+    SOURCE_FILE_NAME,
+    SOURCE_ROW_NUMBER,
+    LOAD_DATE,
+    INSERT_DATE
+)
+FROM (
+    SELECT
+        IFF($1:raw_data IS NOT NULL, $1:raw_data, $1) AS RAW_DATA,
+        METADATA$FILENAME AS SOURCE_FILE_NAME,
+        METADATA$FILE_ROW_NUMBER AS SOURCE_ROW_NUMBER,
+        CURRENT_DATE() AS LOAD_DATE,
+        COALESCE(
+            TRY_TO_TIMESTAMP_NTZ($1:insert_date::STRING),
+            CURRENT_TIMESTAMP()::TIMESTAMP_NTZ
+        ) AS INSERT_DATE
+    FROM @S3_RAW_LANDING_STAGE/lead_activites_raw/
+)
+FILE_FORMAT = (FORMAT_NAME = JSON_LANDING_FORMAT)
+ON_ERROR = ABORT_STATEMENT;
+
+COPY INTO CUSTOM_ACTIVITIES_RAW (
+    RAW_DATA,
+    SOURCE_FILE_NAME,
+    SOURCE_ROW_NUMBER,
+    LOAD_DATE,
+    INSERT_DATE
+)
+FROM (
+    SELECT
+        IFF($1:raw_data IS NOT NULL, $1:raw_data, $1) AS RAW_DATA,
+        METADATA$FILENAME AS SOURCE_FILE_NAME,
+        METADATA$FILE_ROW_NUMBER AS SOURCE_ROW_NUMBER,
+        CURRENT_DATE() AS LOAD_DATE,
+        COALESCE(
+            TRY_TO_TIMESTAMP_NTZ($1:insert_date::STRING),
+            CURRENT_TIMESTAMP()::TIMESTAMP_NTZ
+        ) AS INSERT_DATE
+    FROM @S3_RAW_LANDING_STAGE/custom_activites_raw/
+)
+FILE_FORMAT = (FORMAT_NAME = JSON_LANDING_FORMAT)
+ON_ERROR = ABORT_STATEMENT;
+
+COPY INTO CLOSE_CRM_USERS_RAW (
+    RAW_DATA,
+    SOURCE_FILE_NAME,
+    SOURCE_ROW_NUMBER,
+    LOAD_DATE,
+    INSERT_DATE
+)
+FROM (
+    SELECT
+        IFF($1:raw_data IS NOT NULL, $1:raw_data, $1) AS RAW_DATA,
+        METADATA$FILENAME AS SOURCE_FILE_NAME,
+        METADATA$FILE_ROW_NUMBER AS SOURCE_ROW_NUMBER,
+        CURRENT_DATE() AS LOAD_DATE,
+        COALESCE(
+            TRY_TO_TIMESTAMP_NTZ($1:insert_date::STRING),
+            CURRENT_TIMESTAMP()::TIMESTAMP_NTZ
+        ) AS INSERT_DATE
+    FROM @S3_RAW_LANDING_STAGE/close_crm_users_raw/
+)
+FILE_FORMAT = (FORMAT_NAME = JSON_LANDING_FORMAT)
+ON_ERROR = ABORT_STATEMENT;

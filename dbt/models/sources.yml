@@ -1,0 +1,17 @@
+version: 2
+
+sources:
+  - name: bronze
+    description: Raw Snowflake Bronze tables loaded from S3 JSONL files with minimal transformation.
+    database: INBOUND_LEADS
+    schema: BRONZE
+
+    tables:
+      - name: LEADS_RAW
+        description: Raw Close CRM lead payloads loaded from S3.
+      - name: LEAD_ACTIVITIES_RAW
+        description: Raw Close CRM activity wrapper payloads; RAW_DATA:data contains activity arrays.
+      - name: CLOSE_CRM_USERS_RAW
+        description: Raw Close CRM user metadata payloads.
+      - name: CUSTOM_ACTIVITIES_RAW
+        description: Raw Close CRM custom activity metadata payloads.
