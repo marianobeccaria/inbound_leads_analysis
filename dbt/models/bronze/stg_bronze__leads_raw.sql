@@ -1,3 +1,14 @@
+/*
+    Bronze staging model for raw Close CRM leads.
+
+    Source:
+      INBOUND_LEADS.BRONZE.LEADS_RAW, loaded from S3 JSONL files.
+
+    Purpose:
+      Expose the most commonly used lead attributes as typed columns while
+      preserving the original RAW_DATA JSON and load metadata for auditing.
+*/
+
 select
     raw_data:id::string as lead_id,
     raw_data:name::string as lead_name,
