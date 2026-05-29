@@ -18,6 +18,7 @@ with strategy_funnels as (
 
 closer_rollup as (
     select
+        strategy_at::date as report_date,
         closer_user_id,
         count(*) as calls_booked,
         count_if(strategy_outcome = '2. Admin Cancel') as admin_cancellations,
@@ -46,11 +47,12 @@ closer_rollup as (
         sum(contract_value) as total_contract_value,
         sum(cash_collected) as total_cash_collected
     from strategy_funnels
-    group by closer_user_id
+    group by strategy_at::date, closer_user_id
 ),
 
 final as (
     select
+        closer_rollup.report_date,
         closer_rollup.closer_user_id,
         dim_user.full_name as closer_name,
         dim_user.email as closer_email,

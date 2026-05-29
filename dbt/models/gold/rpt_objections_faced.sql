@@ -10,17 +10,19 @@
       such as ["Logistical", "Money"], so this model flattens them.
 */
 
+
 with strategy_funnels as (
     select
         lead_funnel_id,
         lead_id,
         strategy_activity_id,
+        strategy_at::date as report_date,
         strategy_at,
         closer_user_id,
         objections_faced
     from {{ ref('fact_lead_funnel') }}
     where strategy_activity_id is not null
-      and objections_faced is not null
+    and objections_faced is not null
 ),
 
 flattened_objections as (
@@ -28,6 +30,7 @@ flattened_objections as (
         strategy_funnels.lead_funnel_id,
         strategy_funnels.lead_id,
         strategy_funnels.strategy_activity_id,
+        strategy_funnels.report_date,
         strategy_funnels.strategy_at,
         strategy_funnels.closer_user_id,
         trim(objection.value::string) as source_objection_value
@@ -40,6 +43,7 @@ normalized_objections as (
         lead_funnel_id,
         lead_id,
         strategy_activity_id,
+        report_date,
         strategy_at,
         closer_user_id,
         source_objection_value,
@@ -64,25 +68,30 @@ normalized_objections as (
         end as objection_category
     from flattened_objections
     where source_objection_value is not null
-      and source_objection_value <> ''
+    and source_objection_value <> ''
 ),
 
 total_strategy_calls as (
-    select count(distinct strategy_activity_id) as strategy_calls_evaluated
-    from normalized_objections
+    select
+        report_date,
+        count(distinct strategy_activity_id) as strategy_calls_evaluated
+    from strategy_funnels
+    group by report_date
 ),
 
 category_rollup as (
     select
+        report_date,
         objection_category,
         count(*) as objection_count,
         count(distinct strategy_activity_id) as distinct_strategy_call_count,
         count(distinct lead_id) as distinct_lead_count
     from normalized_objections
-    group by objection_category
+    group by report_date, objection_category
 )
 
 select
+    category_rollup.report_date,
     category_rollup.objection_category,
     category_rollup.objection_count,
     category_rollup.distinct_strategy_call_count,
@@ -94,4 +103,5 @@ select
         4
     ) as strategy_call_percentage
 from category_rollup
-cross join total_strategy_calls
+left join total_strategy_calls
+    on category_rollup.report_date = total_strategy_calls.report_date
