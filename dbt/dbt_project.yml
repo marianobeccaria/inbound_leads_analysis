@@ -46,6 +46,9 @@ models:
     gold:
       +schema: GOLD
       +materialized: table
+    audit:
+      +schema: AUDIT
+      +materialized: view
 
 seeds:
   inbound_leads_analysis:

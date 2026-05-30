@@ -1,0 +1,28 @@
+version: 2
+
+models:
+  - name: audit_unmapped_custom_activity_types
+    description: CustomActivity type IDs observed in Silver but missing from custom_activity_type_map.
+    columns:
+      - name: custom_activity_type_id
+        tests:
+          - not_null
+          - unique
+
+  - name: audit_unmapped_custom_fields
+    description: custom.cf_* keys observed in CustomActivity payloads but missing from custom_field_map.
+    columns:
+      - name: custom_field_id
+        tests:
+          - not_null
+          - unique
+
+  - name: audit_unmapped_funnel_outcomes
+    description: Funnel outcome values observed in CustomActivity payloads but missing from funnel_outcome_map.
+    columns:
+      - name: field_name
+        tests:
+          - not_null
+      - name: raw_value
+        tests:
+          - not_null

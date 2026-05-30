@@ -14,3 +14,13 @@ actitype_507oP5QyCYfuYwXJAwWHCJ,12) Onboarding Complete,,onboarding,false,true
 actitype_1HXYl1QAkZesVy3La8fY6z,13) New Deposit,,deposit,true,true
 actitype_2nUbKYaRQAH95TSqfFWvRQ,Refund Decision,,refund,false,true
 actitype_3oVghh67j6FnQBSakv1eeh,15) Refund Request Initiated,,refund,false,true
+actitype_2bBGxk2qNSjDtfe4wTCDzr,Fathom Call,,non_funnel,false,true
+actitype_0swZKvY0rLQngJj3Nxgo39,0) Pipeline Update,,non_funnel,false,true
+actitype_5ltasxnH1UU2j1on4op8qi,10) Call Confirmation Activity,,non_funnel,false,true
+actitype_6n2drkxKiwj4uUvu53pMUe,Payment Transaction,,non_funnel,true,true
+actitype_2r9Ge5rnHH7YqWzJecBbHg,Referral Ask,,non_funnel,false,true
+actitype_2f2lvOBTwSWJU7lHWpJbGB,New Referral Generated,,non_funnel,false,true
+actitype_1Bj6EF9JEfT7CYg1AtaWXP,Setter Hand Off Notes,,non_funnel,false,true
+actitype_4QrRumUF5ZvaeNUzyQNBLT,Backend Sale Pitch,,non_funnel,false,true
+actitype_3YvG1OKZ6MvrLVDBwbXSPk,Lead Fi,,non_funnel,false,true
+actitype_0ZlhS1aVvF1FkXVbnKW06d,Slack User Removal,,non_funnel,false,true

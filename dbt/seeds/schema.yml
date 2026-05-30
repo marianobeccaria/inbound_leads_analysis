@@ -25,6 +25,7 @@ seeds:
                   - onboarding
                   - deposit
                   - refund
+                  - non_funnel
       - name: is_active
         tests:
           - not_null
