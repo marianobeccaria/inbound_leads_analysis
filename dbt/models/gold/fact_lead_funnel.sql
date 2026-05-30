@@ -16,51 +16,45 @@ with custom_activity_events as (
     from {{ ref('silver_custom_activity_events') }}
 ),
 
+custom_activity_type_map as (
+    select
+        custom_activity_type_id,
+        custom_activity_type_name,
+        funnel_source,
+        funnel_stage
+    from {{ ref('custom_activity_type_map') }}
+    where lower(is_active::string) = 'true'
+    and funnel_stage in (
+        'initial_contact',
+        'strategy',
+        'sale'
+    )
+),
+
 funnel_events as (
     select
-        lead_id,
-        activity_id,
-        custom_activity_type_id,
-        activity_at,
-        activity_updated_at,
-        user_id,
-        -- Inbound starts with triage activity types; outbound starts with prospecting types.
-        case
-            when custom_activity_type_id in (
-                'actitype_38341SWOKRkRHHAqWEqSJu',
-                'actitype_1zimBrwAdOLmRLK0Ncg6Lb'
-            ) then 'inbound'
-            when custom_activity_type_id in (
-                'actitype_4tEv1xumZEk9vYYs7WxYy7',
-                'actitype_6ga7msjJ7kZcH2rGtYETwe'
-            ) then 'outbound'
-        end as funnel_source,
-        -- Activity type IDs are mapped to the funnel stage they represent.
-        case
-            when custom_activity_type_id in (
-                'actitype_38341SWOKRkRHHAqWEqSJu',
-                'actitype_1zimBrwAdOLmRLK0Ncg6Lb',
-                'actitype_4tEv1xumZEk9vYYs7WxYy7',
-                'actitype_6ga7msjJ7kZcH2rGtYETwe'
-            ) then 'initial_contact'
-            when custom_activity_type_id in (
-                'actitype_2VcSfZQX6FeIL8kkxy48C2',
-                'actitype_6IrDujYE2WKg9QCFJdpXJk'
-            ) then 'strategy'
-            when custom_activity_type_id in (
-                'actitype_3E85vFq3a06LlEzXT2N1kS',
-                'actitype_0FNk72Q8eSYX2MVd4A2UFx'
-            ) then 'sale'
-        end as funnel_stage,
-        -- Custom field IDs were identified during EDA and map to business attributes.
-        activity:"custom.cf_h3tYb9J6yPK7J4PMExDGsEqPCf8kBGBrRNIur2Dm5aN"::string as triage_outcome,
-        activity:"custom.cf_Q2fsrD8VpPaunZLtyiy7P3vG6qJTv0w1ESmlhdHU2ra"::string as prospecting_outcome,
-        activity:"custom.cf_dhJR4N7Rm6czuJthYGJP6KqUcuOzi7fqApGI7puWnMo"::string as strategy_outcome,
-        activity:"custom.cf_LGyzSTMPy37y87rDOUmFXlZA42HPSIpbipeT2OsQNHW"::string as offer_presented,
-        activity:"custom.cf_aIN5Gtqq33tUCCBxFTW63FY6d3mofnKIfFqfWPkvNla" as objections_faced,
+        custom_activity_events.lead_id,
+        custom_activity_events.activity_id,
+        custom_activity_events.custom_activity_type_id,
+        custom_activity_events.activity_at,
+        custom_activity_events.activity_updated_at,
+        custom_activity_events.user_id,
+        custom_activity_type_map.funnel_source,
+        custom_activity_type_map.funnel_stage,
+
+        -- Custom field IDs are still explicit in Phase 2. They will move behind
+        -- canonical mapping/audit logic in a later phase.
+        custom_activity_events.activity:"custom.cf_h3tYb9J6yPK7J4PMExDGsEqPCf8kBGBrRNIur2Dm5aN"::string as triage_outcome,
+        custom_activity_events.activity:"custom.cf_Q2fsrD8VpPaunZLtyiy7P3vG6qJTv0w1ESmlhdHU2ra"::string as
+prospecting_outcome,
+        custom_activity_events.activity:"custom.cf_dhJR4N7Rm6czuJthYGJP6KqUcuOzi7fqApGI7puWnMo"::string as
+strategy_outcome,
+        custom_activity_events.activity:"custom.cf_LGyzSTMPy37y87rDOUmFXlZA42HPSIpbipeT2OsQNHW"::string as
+offer_presented,
+        custom_activity_events.activity:"custom.cf_aIN5Gtqq33tUCCBxFTW63FY6d3mofnKIfFqfWPkvNla" as objections_faced,
         nullif(
             regexp_replace(
-                activity:"custom.cf_vIanPjPEit6ssajmWkcprF2V1nO1itfes8hOSnjmhfT"::string,
+                custom_activity_events.activity:"custom.cf_vIanPjPEit6ssajmWkcprF2V1nO1itfes8hOSnjmhfT"::string,
                 '[^0-9.-]',
                 ''
             ),
@@ -68,32 +62,26 @@ funnel_events as (
         )::number(18, 2) as contract_value,
         nullif(
             regexp_replace(
-                activity:"custom.cf_eyLbGJm9DYY7cuJk2otnCxhUEzK9ayEARiE81xPG5uY"::string,
+                custom_activity_events.activity:"custom.cf_eyLbGJm9DYY7cuJk2otnCxhUEzK9ayEARiE81xPG5uY"::string,
                 '[^0-9.-]',
                 ''
             ),
             ''
         )::number(18, 2) as cash_collected,
         coalesce(
-            activity:"custom.cf_v385AJ8HSgepKQ3rvqo4yOA3nn49eGqz39DOqojJG5M"::string,
-            user_id
+            custom_activity_events.activity:"custom.cf_v385AJ8HSgepKQ3rvqo4yOA3nn49eGqz39DOqojJG5M"::string,
+            custom_activity_events.user_id
         ) as setter_user_id,
         coalesce(
-            activity:"custom.cf_Lv5lSqLOZwLrNhe5M7kWx2mF8Ge2Z23aw5NUNhbXvVS"::string,
-            user_id
+            custom_activity_events.activity:"custom.cf_Lv5lSqLOZwLrNhe5M7kWx2mF8Ge2Z23aw5NUNhbXvVS"::string,
+            custom_activity_events.user_id
         ) as closer_user_id
     from custom_activity_events
-    where custom_activity_type_id in (
-        'actitype_38341SWOKRkRHHAqWEqSJu',
-        'actitype_1zimBrwAdOLmRLK0Ncg6Lb',
-        'actitype_4tEv1xumZEk9vYYs7WxYy7',
-        'actitype_6ga7msjJ7kZcH2rGtYETwe',
-        'actitype_2VcSfZQX6FeIL8kkxy48C2',
-        'actitype_6IrDujYE2WKg9QCFJdpXJk',
-        'actitype_3E85vFq3a06LlEzXT2N1kS',
-        'actitype_0FNk72Q8eSYX2MVd4A2UFx'
-    )
+    inner join custom_activity_type_map
+        on custom_activity_events.custom_activity_type_id
+            = custom_activity_type_map.custom_activity_type_id
 ),
+
 
 initial_events as (
     select *
