@@ -122,6 +122,11 @@ def bar_chart_or_empty(dataframe, x_column, y_column):
         return
     st.bar_chart(dataframe, x=x_column, y=y_column)
 
+def metric_row(metrics):
+    columns = st.columns(len(metrics))
+    for column, (label, value) in zip(columns, metrics):
+        column.metric(label, value)
+
 
 inbound = query_table("RPT_INBOUND_SETTER")
 outbound = query_table("RPT_OUTBOUND_SETTER")
@@ -233,24 +238,121 @@ with tab_summary:
 
 with tab_inbound:
     st.subheader("Inbound Setter Performance")
+
+    metric_row(
+        [
+            ("Inbound Booked", f"{inbound_booked:,}"),
+            ("Inbound Taken", f"{inbound_taken:,}"),
+            ("Triage Set", f"{triage_set:,}"),
+            ("Inbound Sales", f"{int(inbound['TOTAL_SALES'].fillna(0).sum()):,}"),
+        ]
+    )
+
+    metric_row(
+        [
+            ("Inbound Show Rate", format_percent(inbound_taken, inbound_booked)),
+            ("Triage Set Rate", format_percent(triage_set, inbound_taken)),
+            (
+                "Inbound Contract Value",
+                format_currency(float(inbound["TOTAL_CONTRACT_VALUE"].fillna(0).sum())),
+            ),
+            (
+                "Inbound Cash Collected",
+                format_currency(float(inbound["TOTAL_CASH_COLLECTED"].fillna(0).sum())),
+            ),
+        ]
+    )
+
     inbound_sorted = inbound.sort_values("TOTAL_SALES", ascending=False)
     bar_chart_or_empty(inbound_sorted, "SETTER_NAME", "TOTAL_SALES")
     display_table(inbound, sort_column="TOTAL_SALES")
 
 with tab_outbound:
     st.subheader("Outbound Setter Performance")
+
+    outbound_sales = int(outbound["TOTAL_SALES"].fillna(0).sum())
+    outbound_contract_value = float(outbound["TOTAL_CONTRACT_VALUE"].fillna(0).sum())
+    outbound_cash_collected = float(outbound["TOTAL_CASH_COLLECTED"].fillna(0).sum())
+    outbound_closer_show = int(outbound["TOTAL_CLOSER_SHOW"].fillna(0).sum())
+
+    metric_row(
+        [
+            ("Outbound Calls", f"{outbound_calls:,}"),
+            ("Outbound Set", f"{outbound_set:,}"),
+            ("Closer Shows", f"{outbound_closer_show:,}"),
+            ("Outbound Sales", f"{outbound_sales:,}"),
+        ]
+    )
+
+    metric_row(
+        [
+            ("Dial-to-Set Rate", format_percent(outbound_set, outbound_calls)),
+            ("Set-to-Show Rate", format_percent(outbound_closer_show, outbound_set)),
+            ("Show-to-Sale Rate", format_percent(outbound_sales, outbound_closer_show)),
+            ("Outbound Contract Value", format_currency(outbound_contract_value)),
+        ]
+    )
+
     outbound_sorted = outbound.sort_values("OUTBOUND_SET", ascending=False)
     bar_chart_or_empty(outbound_sorted, "SETTER_NAME", "OUTBOUND_SET")
     display_table(outbound, sort_column="OUTBOUND_SET")
 
 with tab_closer:
     st.subheader("Closer Performance")
+
+    closer_contract_value = float(closer["TOTAL_CONTRACT_VALUE"].fillna(0).sum())
+    closer_cash_collected = float(closer["TOTAL_CASH_COLLECTED"].fillna(0).sum())
+    closer_no_shows = int(closer["NO_SHOWS"].fillna(0).sum())
+
+    metric_row(
+        [
+            ("Calls Booked", f"{closer_calls_booked:,}"),
+            ("Shows", f"{closer_shows:,}"),
+            ("No Shows", f"{closer_no_shows:,}"),
+            ("Sales", f"{closer_sales:,}"),
+        ]
+    )
+
+    metric_row(
+        [
+            ("Show Rate", format_percent(closer_shows, closer_calls_booked)),
+            ("Show-to-Sale Rate", format_percent(closer_sales, closer_shows)),
+            ("Contract Value", format_currency(closer_contract_value)),
+            ("Cash Collected", format_currency(closer_cash_collected)),
+        ]
+    )
+
     closer_sorted = closer.sort_values("SALES", ascending=False)
     bar_chart_or_empty(closer_sorted, "CLOSER_NAME", "SALES")
     display_table(closer, sort_column="SALES")
 
 with tab_objections:
     st.subheader("Objections Faced")
+
+    total_objections = int(objections["OBJECTION_COUNT"].fillna(0).sum())
+    distinct_strategy_calls = int(
+        objections["DISTINCT_STRATEGY_CALL_COUNT"].fillna(0).sum()
+    )
+    distinct_leads = int(objections["DISTINCT_LEAD_COUNT"].fillna(0).sum())
+
+    top_objection = "N/A"
+    if not objections.empty:
+        top_objection = (
+            objections.groupby("OBJECTION_CATEGORY")["OBJECTION_COUNT"]
+            .sum()
+            .sort_values(ascending=False)
+            .index[0]
+        )
+
+    metric_row(
+        [
+            ("Objection Mentions", f"{total_objections:,}"),
+            ("Strategy Calls With Objections", f"{distinct_strategy_calls:,}"),
+            ("Leads With Objections", f"{distinct_leads:,}"),
+            ("Top Objection", top_objection),
+        ]
+    )
+
     objections_sorted = objections.sort_values("OBJECTION_COUNT", ascending=False)
     bar_chart_or_empty(objections_sorted, "OBJECTION_CATEGORY", "OBJECTION_COUNT")
     display_table(objections, sort_column="OBJECTION_COUNT")
