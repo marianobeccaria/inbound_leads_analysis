@@ -1,0 +1,26 @@
+field_name,raw_value,normalized_value,outcome_category,is_taken,is_set,is_sale,is_cancel,is_no_show,is_follow_up,is_unqualified
+Triage Call Outcome,1. Strategy Call Scheduled,Strategy Call Scheduled,set,true,true,false,false,false,false,false
+Triage Call Outcome,2. Unqualified,Unqualified,unqualified,true,false,false,false,false,false,true
+Triage Call Outcome,3. Follow Up < 10 Days,Follow Up < 10 Days,follow_up,true,false,false,false,false,true,false
+Triage Call Outcome,4. Follow Up < 1 Month,Follow Up < 1 Month,follow_up,true,false,false,false,false,true,false
+Triage Call Outcome,5. Long Term Follow Up,Long Term Follow Up,follow_up,true,false,false,false,false,true,false
+Triage Call Outcome,6. No Show,No Show,no_show,false,false,false,false,true,false,false
+Triage Call Outcome,7. Reschedule,Reschedule,reschedule,false,false,false,false,false,false,false
+Triage Call Outcome,8. Cancel,Cancel,cancel,false,false,false,true,false,false,false
+Triage Call Outcome,9. Inaccurate Prospect,Inaccurate Prospect,bad_contact,true,false,false,false,false,false,true
+Triage Call Outcome,10. Not Interested,Not Interested,not_interested,true,false,false,false,false,false,true
+Prospecting Call Outcome,1. Triage Booked,Triage Booked,set,true,true,false,false,false,false,false
+Prospecting Call Outcome,2. Strategy Call Scheduled,Strategy Call Scheduled,set,true,true,false,false,false,false,false
+Prospecting Call Outcome,3. Follow Up,Follow Up,follow_up,true,false,false,false,false,true,false
+Prospecting Call Outcome,4. Unqualified,Unqualified,unqualified,true,false,false,false,false,false,true
+Prospecting Call Outcome,5. Inaccurate Contact,Inaccurate Contact,bad_contact,true,false,false,false,false,false,true
+Prospecting Call Outcome,6. Not Interested,Not Interested,not_interested,true,false,false,false,false,false,true
+Strategy Call Outcome,1. Follow Up,Follow Up,follow_up,true,false,false,false,false,true,false
+Strategy Call Outcome,2. Admin Cancel,Admin Cancel,cancel,false,false,false,true,false,false,false
+Strategy Call Outcome,3. Cancel- Not Interested,Cancel - Not Interested,cancel,false,false,false,true,false,false,false
+Strategy Call Outcome,4. No Show,No Show,no_show,false,false,false,false,true,false,false
+Strategy Call Outcome,5. Reschedule,Reschedule,reschedule,false,false,false,false,false,false,false
+Strategy Call Outcome,6. Sale,Sale,sale,true,false,true,false,false,false,false
+Strategy Call Outcome,7. Lost,Lost,lost,true,false,false,false,false,false,false
+Strategy Call Outcome,8. Cancel- Nurture,Cancel - Nurture,cancel,false,false,false,true,false,false,false
+Strategy Call Outcome,8. Cancel,Cancel,cancel,false,false,false,true,false,false,false

@@ -1,0 +1,16 @@
+custom_activity_type_id,custom_activity_type_name,funnel_source,funnel_stage,is_revenue_event,is_active
+actitype_38341SWOKRkRHHAqWEqSJu,3) Triage Call,inbound,initial_contact,false,true
+actitype_1zimBrwAdOLmRLK0Ncg6Lb,4) Triage Call Follow Up,inbound,initial_contact,false,true
+actitype_4tEv1xumZEk9vYYs7WxYy7,1) Prospecting Activity,outbound,initial_contact,false,true
+actitype_6ga7msjJ7kZcH2rGtYETwe,2) Prospecting Follow Up,outbound,initial_contact,false,true
+actitype_2VcSfZQX6FeIL8kkxy48C2,5) Strategy Call,,strategy,false,true
+actitype_6IrDujYE2WKg9QCFJdpXJk,6) Strategy Call Follow Up,,strategy,false,true
+actitype_3E85vFq3a06LlEzXT2N1kS,7) New Sale,,sale,true,true
+actitype_0FNk72Q8eSYX2MVd4A2UFx,8) New Sale [Custom Payment Plan],,sale,true,true
+actitype_0UClFQWNpy8T71EXBNHKYG,14) Backend Sale,,backend_sale,true,true
+actitype_3bvm3ENPUG8NT0owMJ6XDH,9) Additional Cash Collected,,additional_cash,true,true
+actitype_2HzZS6DnitF3D4GAxRL3kr,11) Post-Sale Activity,,post_sale,false,true
+actitype_507oP5QyCYfuYwXJAwWHCJ,12) Onboarding Complete,,onboarding,false,true
+actitype_1HXYl1QAkZesVy3La8fY6z,13) New Deposit,,deposit,true,true
+actitype_2nUbKYaRQAH95TSqfFWvRQ,Refund Decision,,refund,false,true
+actitype_3oVghh67j6FnQBSakv1eeh,15) Refund Request Initiated,,refund,false,true

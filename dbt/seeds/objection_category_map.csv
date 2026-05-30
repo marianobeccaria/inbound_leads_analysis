@@ -1,0 +1,16 @@
+source_objection_value,normalized_objection_category,is_active
+Money,Money,true
+Financial,Money,true
+Fear,Fear,true
+Hung Up,Hung Up,true
+Logistical,Logistical,true
+No Objections,No Objections,true
+Talking to Other Coaches,Talking to Other Coaches,true
+Partner,Partner,true
+Think About It,Think About It,true
+Time,Time,true
+Trust,Trust,true
+Uncertain About Us,Trust,true
+Value,Value,true
+Wasn't Looking For What We Offered,Wasn't Looking For What We Offered,true
+No Show,No Show,true

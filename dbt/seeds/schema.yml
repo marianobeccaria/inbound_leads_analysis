@@ -1,0 +1,77 @@
+version: 2
+
+seeds:
+  - name: custom_activity_type_map
+    description: Version-controlled mapping from Close CRM custom activity type IDs to business funnel stages.
+    columns:
+      - name: custom_activity_type_id
+        tests:
+          - not_null
+          - unique
+      - name: custom_activity_type_name
+        tests:
+          - not_null
+      - name: funnel_stage
+        tests:
+          - accepted_values:
+              arguments:
+                values:
+                  - initial_contact
+                  - strategy
+                  - sale
+                  - backend_sale
+                  - additional_cash
+                  - post_sale
+                  - onboarding
+                  - deposit
+                  - refund
+      - name: is_active
+        tests:
+          - not_null
+
+  - name: custom_field_map
+    description: Version-controlled mapping from Close CRM custom field IDs to canonical field names used by dbt models.
+    columns:
+      - name: custom_field_id
+        tests:
+          - not_null
+          - unique
+      - name: canonical_field_name
+        tests:
+          - not_null
+      - name: field_role
+        tests:
+          - not_null
+      - name: is_active
+        tests:
+          - not_null
+
+  - name: funnel_outcome_map
+    description: Normalizes raw Close CRM outcome labels into stable business categories and reporting flags.
+    columns:
+      - name: field_name
+        tests:
+          - not_null
+      - name: raw_value
+        tests:
+          - not_null
+      - name: normalized_value
+        tests:
+          - not_null
+      - name: outcome_category
+        tests:
+          - not_null
+
+  - name: objection_category_map
+    description: Normalizes raw strategy-call objection values into stable reporting categories.
+    columns:
+      - name: source_objection_value
+        tests:
+          - not_null
+          - unique
+      - name: normalized_objection_category
+        tests:
+          - not_null
+      - name: is_active
+        tests:
+          - not_null

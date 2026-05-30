@@ -46,3 +46,8 @@ models:
     gold:
       +schema: GOLD
       +materialized: table
+
+seeds:
+  inbound_leads_analysis:
+    +schema: REFERENCE
+    +quote_columns: false
