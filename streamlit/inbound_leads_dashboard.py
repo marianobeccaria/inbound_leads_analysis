@@ -4,7 +4,14 @@ import pandas as pd
 
 
 DATABASE = "INBOUND_LEADS"
-SCHEMA = "DBT_DEV_GOLD"
+DEFAULT_SCHEMA = "DBT_DEV_GOLD"
+
+SCHEMA = st.sidebar.selectbox(
+    "Data Environment",
+    ["DBT_DEV_GOLD", "PUBLIC_GOLD"],
+    index=0,
+)
+
 
 RATE_COLUMNS = {
     "SHOW_RATE",
@@ -20,7 +27,7 @@ CURRENCY_COLUMNS = {
     "TOTAL_CONTRACT_VALUE",
     "TOTAL_CASH_COLLECTED",
     "AVERAGE_ORDER_VALUE",
-    "AVERAGE_CONTRACT_VALUE",
+"AVERAGE_CONTRACT_VALUE",
 }
 
 st.set_page_config(page_title="Inbound Leads Analytics", layout="wide")
