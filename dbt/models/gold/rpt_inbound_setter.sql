@@ -18,6 +18,7 @@ with inbound_funnels as (
 
 setter_rollup as (
     select
+        initial_at::date as report_date,
         setter_user_id,
         count(*) as inbound_booked,
 
@@ -58,11 +59,12 @@ setter_rollup as (
         sum(contract_value) as total_contract_value,
         sum(cash_collected) as total_cash_collected
     from inbound_funnels
-    group by setter_user_id
+    group by initial_at::date, setter_user_id
 ),
 
 final as (
     select
+        setter_rollup.report_date,
         setter_rollup.setter_user_id,
         dim_user.full_name as setter_name,
         dim_user.email as setter_email,

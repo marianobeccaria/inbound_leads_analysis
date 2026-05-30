@@ -1,9 +1,17 @@
 import streamlit as st
 from snowflake.snowpark.context import get_active_session
+import pandas as pd
 
 
 DATABASE = "INBOUND_LEADS"
-SCHEMA = "DBT_DEV_GOLD"
+DEFAULT_SCHEMA = "DBT_DEV_GOLD"
+
+SCHEMA = st.sidebar.selectbox(
+    "Data Environment",
+    ["DBT_DEV_GOLD", "PUBLIC_GOLD"],
+    index=0,
+)
+
 
 RATE_COLUMNS = {
     "SHOW_RATE",
@@ -19,7 +27,7 @@ CURRENCY_COLUMNS = {
     "TOTAL_CONTRACT_VALUE",
     "TOTAL_CASH_COLLECTED",
     "AVERAGE_ORDER_VALUE",
-    "AVERAGE_CONTRACT_VALUE",
+"AVERAGE_CONTRACT_VALUE",
 }
 
 st.set_page_config(page_title="Inbound Leads Analytics", layout="wide")
@@ -52,6 +60,36 @@ def filter_by_selection(dataframe, column_name, selected_values):
     if not selected_values or column_name not in dataframe.columns:
         return dataframe
     return dataframe[dataframe[column_name].isin(selected_values)]
+
+def normalize_report_date(dataframe):
+    if "REPORT_DATE" not in dataframe.columns:
+        return dataframe
+
+    dataframe = dataframe.copy()
+    dataframe["REPORT_DATE"] = pd.to_datetime(dataframe["REPORT_DATE"]).dt.date
+    return dataframe
+
+
+def get_global_date_bounds(*dataframes):
+    dates = []
+    for dataframe in dataframes:
+        if "REPORT_DATE" in dataframe.columns and not dataframe.empty:
+            dates.extend(dataframe["REPORT_DATE"].dropna().tolist())
+
+    if not dates:
+        return None, None
+
+    return min(dates), max(dates)
+
+
+def filter_by_date_range(dataframe, start_date, end_date):
+    if "REPORT_DATE" not in dataframe.columns or start_date is None or end_date is None:
+        return dataframe
+
+    return dataframe[
+        (dataframe["REPORT_DATE"] >= start_date)
+        & (dataframe["REPORT_DATE"] <= end_date)
+    ]
 
 
 def display_table(dataframe, sort_column=None, ascending=False):
@@ -90,8 +128,34 @@ outbound = query_table("RPT_OUTBOUND_SETTER")
 closer = query_table("RPT_CLOSER")
 objections = query_table("RPT_OBJECTIONS_FACED")
 
+inbound = normalize_report_date(inbound)
+outbound = normalize_report_date(outbound)
+closer = normalize_report_date(closer)
+objections = normalize_report_date(objections)
+
 with st.sidebar:
     st.header("Filters")
+
+    min_date, max_date = get_global_date_bounds(inbound, outbound, closer, objections)
+
+    if min_date and max_date:
+        selected_date_range = st.date_input(
+            "Date range",
+            value=(min_date, max_date),
+            min_value=min_date,
+            max_value=max_date,
+        )
+    else:
+        selected_date_range = None
+
+if selected_date_range and len(selected_date_range) == 2:
+    start_date, end_date = selected_date_range
+    inbound = filter_by_date_range(inbound, start_date, end_date)
+    outbound = filter_by_date_range(outbound, start_date, end_date)
+    closer = filter_by_date_range(closer, start_date, end_date)
+    objections = filter_by_date_range(objections, start_date, end_date)
+
+with st.sidebar:
     selected_inbound_setters = st.multiselect(
         "Inbound setters",
         sorted_unique_values(inbound, "SETTER_NAME"),
