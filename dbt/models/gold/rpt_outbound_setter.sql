@@ -2,18 +2,36 @@
     Gold report model for outbound setter performance.
 
     Sources:
-      fact_lead_funnel and dim_user.
+    fact_lead_funnel, dim_user, and funnel_outcome_map.
 
     Purpose:
-      Summarize outbound prospecting performance by setter. This model uses
-      ordered funnel paths so strategy calls and sales are only counted when
-      they happen after the outbound initial contact.
+    Summarize outbound prospecting performance by setter using normalized
+    outcome mappings instead of raw hardcoded outcome values.
 */
 
 with outbound_funnels as (
     select *
     from {{ ref('fact_lead_funnel') }}
     where funnel_source = 'outbound'
+),
+
+outcome_map as (
+    select *
+    from {{ ref('funnel_outcome_map') }}
+),
+
+mapped_funnels as (
+    select
+        outbound_funnels.*,
+        initial_outcome_map.normalized_value as initial_normalized_outcome,
+        strategy_outcome_map.is_taken as strategy_is_taken
+    from outbound_funnels
+    left join outcome_map as initial_outcome_map
+        on initial_outcome_map.field_name = 'Prospecting Call Outcome'
+        and outbound_funnels.initial_outcome = initial_outcome_map.raw_value
+    left join outcome_map as strategy_outcome_map
+        on strategy_outcome_map.field_name = 'Strategy Call Outcome'
+        and outbound_funnels.strategy_outcome = strategy_outcome_map.raw_value
 ),
 
 setter_rollup as (
@@ -23,30 +41,21 @@ setter_rollup as (
         count(*) as total_outbound_calls,
         count(distinct lead_id) as unique_leads_touched,
 
-        -- EDA defined outbound set as prospecting outcome = Strategy Call Scheduled.
-        count_if(initial_outcome = '2. Strategy Call Scheduled') as outbound_set,
+        -- This preserves the current KPI definition: outbound set means
+        -- prospecting outcome scheduled a strategy call.
+        count_if(initial_normalized_outcome = 'Strategy Call Scheduled') as outbound_set,
 
         count(strategy_activity_id) as strategy_calls_booked,
 
-        -- A closer show is a strategy call that was not canceled, no-showed, rescheduled, or blank.
         count_if(
             strategy_activity_id is not null
-            and strategy_outcome is not null
-            and strategy_outcome not in (
-                '2. Admin Cancel',
-                '3. Cancel- Not Interested',
-                '4. No Show',
-                '5. Reschedule',
-                '8. Cancel- Nurture',
-                '8. Cancel',
-                ''
-            )
+            and lower(coalesce(strategy_is_taken::string, 'false')) = 'true'
         ) as total_closer_show,
 
         count(sale_activity_id) as total_sales,
         sum(contract_value) as total_contract_value,
         sum(cash_collected) as total_cash_collected
-    from outbound_funnels
+    from mapped_funnels
     group by initial_at::date, setter_user_id
 ),
 

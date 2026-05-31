@@ -1,15 +1,14 @@
 /*
     Gold report model for strategy-call objections.
 
-    Source:
-      fact_lead_funnel.
+    Sources:
+    fact_lead_funnel and objection_category_map.
 
     Purpose:
-      Normalize the Objections Faced custom field into one row per objection
-      category for BI reporting. Objections can contain multiple array values
-      such as ["Logistical", "Money"], so this model flattens them.
+    Normalize the Objections Faced custom field into one row per objection
+    category for BI reporting. Objections can contain multiple array values
+    such as ["Logistical", "Money"], so this model flattens them.
 */
-
 
 with strategy_funnels as (
     select
@@ -38,37 +37,33 @@ flattened_objections as (
     lateral flatten(input => strategy_funnels.objections_faced) as objection
 ),
 
+objection_category_map as (
+    select
+        source_objection_value,
+        normalized_objection_category
+    from {{ ref('objection_category_map') }}
+    where lower(is_active::string) = 'true'
+),
+
 normalized_objections as (
     select
-        lead_funnel_id,
-        lead_id,
-        strategy_activity_id,
-        report_date,
-        strategy_at,
-        closer_user_id,
-        source_objection_value,
-        case
-            when source_objection_value ilike 'money'
-                or source_objection_value ilike 'financial' then 'Money'
-            when source_objection_value ilike 'fear' then 'Fear'
-            when source_objection_value ilike 'hung up' then 'Hung Up'
-            when source_objection_value ilike 'logistical' then 'Logistical'
-            when source_objection_value ilike 'no objections' then 'No Objections'
-            when source_objection_value ilike 'talking to other coaches' then 'Talking to Other Coaches'
-            when source_objection_value ilike 'partner' then 'Partner'
-            when source_objection_value ilike 'think about it' then 'Think About It'
-            when source_objection_value ilike 'time' then 'Time'
-            when source_objection_value ilike 'trust'
-                or source_objection_value ilike 'uncertain about us' then 'Trust'
-            when source_objection_value ilike 'value' then 'Value'
-            when source_objection_value ilike 'wasn''t looking for what we offered'
-                then 'Wasn''t Looking For What We Offered'
-            when source_objection_value ilike 'no show' then 'No Show'
-            else source_objection_value
-        end as objection_category
+        flattened_objections.lead_funnel_id,
+        flattened_objections.lead_id,
+        flattened_objections.strategy_activity_id,
+        flattened_objections.report_date,
+        flattened_objections.strategy_at,
+        flattened_objections.closer_user_id,
+        flattened_objections.source_objection_value,
+        coalesce(
+            objection_category_map.normalized_objection_category,
+            flattened_objections.source_objection_value
+        ) as objection_category
     from flattened_objections
-    where source_objection_value is not null
-    and source_objection_value <> ''
+    left join objection_category_map
+        on lower(flattened_objections.source_objection_value)
+            = lower(objection_category_map.source_objection_value)
+    where flattened_objections.source_objection_value is not null
+    and flattened_objections.source_objection_value <> ''
 ),
 
 total_strategy_calls as (

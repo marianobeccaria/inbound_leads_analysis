@@ -2,12 +2,11 @@
     Gold report model for closer performance.
 
     Sources:
-      fact_lead_funnel and dim_user.
+    fact_lead_funnel, dim_user, and funnel_outcome_map.
 
     Purpose:
-      Summarize strategy call outcomes by closer. This report evaluates the
-      closer stage of the funnel, including cancellations, shows, lost deals,
-      sales, contract value, and cash collected.
+    Summarize strategy call outcomes by closer using normalized outcome
+    categories and flags from reference seeds.
 */
 
 with strategy_funnels as (
@@ -16,37 +15,42 @@ with strategy_funnels as (
     where strategy_activity_id is not null
 ),
 
+outcome_map as (
+    select *
+    from {{ ref('funnel_outcome_map') }}
+    where field_name = 'Strategy Call Outcome'
+),
+
+mapped_funnels as (
+    select
+        strategy_funnels.*,
+        outcome_map.normalized_value as normalized_strategy_outcome,
+        outcome_map.outcome_category as strategy_outcome_category,
+        outcome_map.is_taken as strategy_is_taken
+    from strategy_funnels
+    left join outcome_map
+        on strategy_funnels.strategy_outcome = outcome_map.raw_value
+),
+
 closer_rollup as (
     select
         strategy_at::date as report_date,
         closer_user_id,
         count(*) as calls_booked,
-        count_if(strategy_outcome = '2. Admin Cancel') as admin_cancellations,
-        count_if(strategy_outcome = '8. Cancel- Nurture') as nurture_cancellations,
-        count_if(strategy_outcome = '3. Cancel- Not Interested') as not_interested_cancellations,
-        count_if(strategy_outcome = '4. No Show') as no_shows,
+        count_if(normalized_strategy_outcome = 'Admin Cancel') as admin_cancellations,
+        count_if(normalized_strategy_outcome = 'Cancel - Nurture') as nurture_cancellations,
+        count_if(normalized_strategy_outcome = 'Cancel - Not Interested') as not_interested_cancellations,
+        count_if(strategy_outcome_category = 'no_show') as no_shows,
 
-        -- Shows exclude canceled, no-show, rescheduled, and blank strategy outcomes.
-        count_if(
-            strategy_outcome is not null
-            and strategy_outcome not in (
-                '2. Admin Cancel',
-                '3. Cancel- Not Interested',
-                '4. No Show',
-                '5. Reschedule',
-                '8. Cancel- Nurture',
-                '8. Cancel',
-                ''
-            )
-        ) as shows,
+        count_if(lower(coalesce(strategy_is_taken::string, 'false')) = 'true') as shows,
 
-        count_if(strategy_outcome = '7. Lost') as lost_deals,
+        count_if(strategy_outcome_category = 'lost') as lost_deals,
 
         -- Final sales and revenue use linked New Sale activities, not only strategy outcome.
         count(sale_activity_id) as sales,
         sum(contract_value) as total_contract_value,
         sum(cash_collected) as total_cash_collected
-    from strategy_funnels
+    from mapped_funnels
     group by strategy_at::date, closer_user_id
 ),
 
