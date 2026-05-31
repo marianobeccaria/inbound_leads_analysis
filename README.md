@@ -83,13 +83,30 @@ The Snowflake database for this project is:
 INBOUND_LEADS
 ```
 
-The expected schemas are:
+The project uses dbt target schemas plus layer-specific custom schemas.
+
+For local development:
 
 ```text
-INBOUND_LEADS.BRONZE
-INBOUND_LEADS.SILVER
-INBOUND_LEADS.GOLD
-INBOUND_LEADS.DBT_DEV
+Base target schema: DBT_DEV
+
+INBOUND_LEADS.DBT_DEV_BRONZE
+INBOUND_LEADS.DBT_DEV_SILVER
+INBOUND_LEADS.DBT_DEV_GOLD
+INBOUND_LEADS.DBT_DEV_REFERENCE
+INBOUND_LEADS.DBT_DEV_AUDIT
+```
+
+For production:
+
+```text
+Base target schema: PUBLIC
+
+INBOUND_LEADS.PUBLIC_BRONZE
+INBOUND_LEADS.PUBLIC_SILVER
+INBOUND_LEADS.PUBLIC_GOLD
+INBOUND_LEADS.PUBLIC_REFERENCE
+INBOUND_LEADS.PUBLIC_AUDIT
 ```
 
 ### Why Snowflake Is Used
@@ -115,6 +132,39 @@ dbt is responsible for:
 - Documenting model lineage.
 - Creating reusable macros for deduplication and hashing.
 - Supporting development and production deployment workflows.
+
+### dbt Idempotency and Mapping Strategy
+
+The dbt pipeline is designed so the same raw inputs, mapping seeds, and model code produce the same outputs on every run.
+
+Close CRM custom activity IDs, custom field IDs, and outcome values are dynamic. During EDA, these values were discovered from raw source data. In dbt, they are stored as version-controlled seed files instead of being hardcoded directly in transformation logic.
+
+Reference seed files:
+
+```text
+dbt/seeds/custom_activity_type_map.csv
+dbt/seeds/custom_field_map.csv
+dbt/seeds/funnel_outcome_map.csv
+dbt/seeds/objection_category_map.csv
+```
+
+These seeds support:
+
+- Stable business mappings for funnel activity types.
+- Stable canonical names for Close CRM custom fields.
+- Normalized outcome flags for funnel KPI logic.
+- Normalized objection categories for reporting.
+- Easier review when Close CRM adds or changes values.
+
+Audit models are used to detect source drift:
+
+```text
+dbt/models/audit/audit_unmapped_custom_activity_types.sql
+dbt/models/audit/audit_unmapped_custom_fields.sql
+dbt/models/audit/audit_unmapped_funnel_outcomes.sql
+```
+
+The expected result for strict audit tests is zero unmapped activity types and zero unmapped funnel outcomes. Custom field drift is surfaced for review because not every field is required for reporting.
 
 EDA and project documentation live outside the dbt project:
 
@@ -389,6 +439,32 @@ dbt run --select bronze silver gold
 dbt test
 dbt docs generate
 dbt docs serve
+```
+
+Common local dbt commands:
+
+```bash
+cd dbt
+
+# Validate local profile connectivity.
+dbt debug --target dev
+dbt debug --target prod
+
+# Load reference mapping seeds.
+dbt seed --target dev
+dbt seed --target prod
+
+# Build development models.
+dbt build --target dev
+
+# Build production models from main branch.
+dbt build --target prod
+
+# Build only audit models.
+dbt build --target dev --select models/audit
+
+# Build dashboard/reporting chain.
+dbt build --target dev --select +rpt_inbound_setter +rpt_outbound_setter +rpt_closer +rpt_objections_faced
 ```
 
 > **Note:**  Verify that dbt points to your conda or pyenv environment (`which dbt` in Linux and Mac ). If another dbt executable appears first on `PATH`, run commands through `conda run -n dea-cdk`, for example `conda run -n dea-cdk dbt docs generate`.
