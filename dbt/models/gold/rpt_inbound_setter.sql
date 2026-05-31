@@ -2,12 +2,11 @@
     Gold report model for inbound setter performance.
 
     Sources:
-      fact_lead_funnel and dim_user.
+    fact_lead_funnel, dim_user, and funnel_outcome_map.
 
     Purpose:
-      Summarize inbound triage performance by setter. This model uses the
-      ordered funnel paths from fact_lead_funnel, so strategy calls and sales are
-      only counted when they happen after the inbound initial contact.
+    Summarize inbound triage performance by setter using normalized outcome
+    flags from reference seeds instead of hardcoded raw outcome values.
 */
 
 with inbound_funnels as (
@@ -16,49 +15,47 @@ with inbound_funnels as (
     where funnel_source = 'inbound'
 ),
 
+outcome_map as (
+    select *
+    from {{ ref('funnel_outcome_map') }}
+),
+
+mapped_funnels as (
+    select
+        inbound_funnels.*,
+        initial_outcome_map.is_taken as initial_is_taken,
+        initial_outcome_map.is_set as initial_is_set,
+        strategy_outcome_map.is_taken as strategy_is_taken
+    from inbound_funnels
+    left join outcome_map as initial_outcome_map
+        on initial_outcome_map.field_name = 'Triage Call Outcome'
+        and inbound_funnels.initial_outcome = initial_outcome_map.raw_value
+    left join outcome_map as strategy_outcome_map
+        on strategy_outcome_map.field_name = 'Strategy Call Outcome'
+        and inbound_funnels.strategy_outcome = strategy_outcome_map.raw_value
+),
+
 setter_rollup as (
     select
         initial_at::date as report_date,
         setter_user_id,
         count(*) as inbound_booked,
 
-        -- Triage taken excludes no-shows, reschedules, cancels, and blank outcomes.
-        count_if(
-            initial_outcome is not null
-            and initial_outcome not in (
-                '6. No Show',
-                '7. Reschedule',
-                '8. Cancel',
-                ''
-            )
-        ) as inbound_taken,
-
-        -- EDA defined inbound set as triage outcome = Strategy Call Scheduled.
-        count_if(initial_outcome = '1. Strategy Call Scheduled') as triage_set,
+        count_if(lower(coalesce(initial_is_taken::string, 'false')) = 'true') as inbound_taken,
+        count_if(lower(coalesce(initial_is_set::string, 'false')) = 'true') as triage_set,
 
         count(strategy_activity_id) as strategy_calls_booked,
 
-        -- Strategy taken excludes admin cancels, not-interested cancels, no-shows,
-        -- reschedules, nurture cancels, general cancels, and blank outcomes.
         count_if(
             strategy_activity_id is not null
-            and strategy_outcome is not null
-            and strategy_outcome not in (
-                '2. Admin Cancel',
-                '3. Cancel- Not Interested',
-                '4. No Show',
-                '5. Reschedule',
-                '8. Cancel- Nurture',
-                '8. Cancel',
-                ''
-            )
+            and lower(coalesce(strategy_is_taken::string, 'false')) = 'true'
         ) as strategy_calls_taken,
 
         count_if(offer_presented is not null and offer_presented <> '') as offers_presented,
         count(sale_activity_id) as total_sales,
         sum(contract_value) as total_contract_value,
         sum(cash_collected) as total_cash_collected
-    from inbound_funnels
+    from mapped_funnels
     group by initial_at::date, setter_user_id
 ),
 

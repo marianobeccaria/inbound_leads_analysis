@@ -369,3 +369,26 @@ The clean scripts use regex where needed because simple JSON casting is not reli
      - rpt_closer
      - rpt_objections_faced
 
+## Handoff to dbt
+
+The EDA findings were converted into dbt reference seeds and audit models so the production pipeline does not depend only on hardcoded SQL values.
+
+| EDA Finding | dbt Implementation |
+|---|---|
+| Custom activity type IDs identify funnel stages | `custom_activity_type_map.csv` |
+| Custom field IDs identify business fields | `custom_field_map.csv` |
+| Raw outcome labels define KPI behavior | `funnel_outcome_map.csv` |
+| Objection values require normalization | `objection_category_map.csv` |
+| New source values may appear over time | `audit_unmapped_*` models |
+
+This creates an idempotent pattern:
+
+```text
+Raw Close CRM data
+  -> deterministic Silver deduplication
+  -> version-controlled reference mappings
+  -> Gold facts and reports
+  -> audit models for unmapped source drift
+```
+
+If Close CRM introduces a new custom activity type, custom field, or outcome value, the pipeline surfaces it through the Audit layer. The value can then be reviewed, classified in the appropriate seed, and rebuilt without changing core transformation logic.
