@@ -23,14 +23,14 @@ outcome_map as (
 mapped_funnels as (
     select
         outbound_funnels.*,
-        initial_outcome_map.normalized_value as initial_normalized_outcome,
+        initial_outcome_map.is_set as initial_is_set,
         strategy_outcome_map.is_taken as strategy_is_taken
     from outbound_funnels
     left join outcome_map as initial_outcome_map
-        on initial_outcome_map.field_name = 'Prospecting Call Outcome'
+        on initial_outcome_map.canonical_field_name = 'prospecting_outcome'
         and outbound_funnels.initial_outcome = initial_outcome_map.raw_value
     left join outcome_map as strategy_outcome_map
-        on strategy_outcome_map.field_name = 'Strategy Call Outcome'
+        on strategy_outcome_map.canonical_field_name = 'strategy_outcome'
         and outbound_funnels.strategy_outcome = strategy_outcome_map.raw_value
 ),
 
@@ -43,7 +43,7 @@ setter_rollup as (
 
         -- This preserves the current KPI definition: outbound set means
         -- prospecting outcome scheduled a strategy call.
-        count_if(initial_normalized_outcome = 'Strategy Call Scheduled') as outbound_set,
+        count_if(lower(coalesce(initial_is_set::string, 'false')) = 'true') as outbound_set,
 
         count(strategy_activity_id) as strategy_calls_booked,
 

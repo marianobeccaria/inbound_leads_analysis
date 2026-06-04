@@ -50,18 +50,24 @@ seeds:
   - name: funnel_outcome_map
     description: Normalizes raw Close CRM outcome labels into stable business categories and reporting flags.
     columns:
-      - name: field_name
-        tests:
-          - not_null
-      - name: raw_value
-        tests:
-          - not_null
-      - name: normalized_value
-        tests:
-          - not_null
-      - name: outcome_category
-        tests:
-          - not_null
+        - name: canonical_field_name
+          tests:
+            - not_null
+        - name: field_name
+          tests:
+            - not_null
+        - name: raw_value
+          tests:
+            - not_null
+        - name: normalized_value
+          tests:
+            - not_null
+        - name: outcome_category
+          tests:
+            - not_null
+        - name: outcome_subcategory
+          tests:
+            - not_null
 
   - name: objection_category_map
     description: Normalizes raw strategy-call objection values into stable reporting categories.

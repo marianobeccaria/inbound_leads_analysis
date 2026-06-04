@@ -28,10 +28,10 @@ mapped_funnels as (
         strategy_outcome_map.is_taken as strategy_is_taken
     from inbound_funnels
     left join outcome_map as initial_outcome_map
-        on initial_outcome_map.field_name = 'Triage Call Outcome'
+        on initial_outcome_map.canonical_field_name = 'triage_outcome'
         and inbound_funnels.initial_outcome = initial_outcome_map.raw_value
     left join outcome_map as strategy_outcome_map
-        on strategy_outcome_map.field_name = 'Strategy Call Outcome'
+        on strategy_outcome_map.canonical_field_name = 'strategy_outcome'
         and inbound_funnels.strategy_outcome = strategy_outcome_map.raw_value
 ),
 
