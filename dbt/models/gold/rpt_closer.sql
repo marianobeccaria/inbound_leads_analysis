@@ -18,7 +18,7 @@ with strategy_funnels as (
 outcome_map as (
     select *
     from {{ ref('funnel_outcome_map') }}
-    where field_name = 'Strategy Call Outcome'
+    where canonical_field_name = 'strategy_outcome'
 ),
 
 mapped_funnels as (
@@ -26,6 +26,7 @@ mapped_funnels as (
         strategy_funnels.*,
         outcome_map.normalized_value as normalized_strategy_outcome,
         outcome_map.outcome_category as strategy_outcome_category,
+        outcome_map.outcome_subcategory as strategy_outcome_subcategory,
         outcome_map.is_taken as strategy_is_taken
     from strategy_funnels
     left join outcome_map
@@ -37,10 +38,10 @@ closer_rollup as (
         strategy_at::date as report_date,
         closer_user_id,
         count(*) as calls_booked,
-        count_if(normalized_strategy_outcome = 'Admin Cancel') as admin_cancellations,
-        count_if(normalized_strategy_outcome = 'Cancel - Nurture') as nurture_cancellations,
-        count_if(normalized_strategy_outcome = 'Cancel - Not Interested') as not_interested_cancellations,
-        count_if(strategy_outcome_category = 'no_show') as no_shows,
+        count_if(strategy_outcome_subcategory = 'admin_cancel') as admin_cancellations,
+        count_if(strategy_outcome_subcategory = 'nurture_cancel') as nurture_cancellations,
+        count_if(strategy_outcome_subcategory = 'not_interested_cancel') as not_interested_cancellations,
+        count_if(strategy_outcome_subcategory = 'no_show') as no_shows,
 
         count_if(lower(coalesce(strategy_is_taken::string, 'false')) = 'true') as shows,
 
