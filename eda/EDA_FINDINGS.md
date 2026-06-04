@@ -371,15 +371,15 @@ The clean scripts use regex where needed because simple JSON casting is not reli
 
 ## Handoff to dbt
 
-The EDA findings were converted into dbt reference seeds and audit models so the production pipeline does not depend only on hardcoded SQL values.
+The EDA findings were converted into dbt reference seeds and audit models so the production pipeline does not depend on hardcoded Close CRM IDs or raw outcome labels inside core transformation logic.
 
 | EDA Finding | dbt Implementation |
 |---|---|
-| Custom activity type IDs identify funnel stages | `custom_activity_type_map.csv` |
-| Custom field IDs identify business fields | `custom_field_map.csv` |
-| Raw outcome labels define KPI behavior | `funnel_outcome_map.csv` |
-| Objection values require normalization | `objection_category_map.csv` |
-| New source values may appear over time | `audit_unmapped_*` models |
+| Custom activity type IDs identify funnel stages | `custom_activity_type_map.csv` drives `fact_lead_funnel.funnel_stage` |
+| Custom field IDs identify business fields | `custom_field_map.csv` drives dynamic custom field extraction by canonical name |
+| Raw outcome labels define KPI behavior | `funnel_outcome_map.csv` stores `canonical_field_name`, outcome flags, and outcome subcategories |
+| Objection values require normalization | `objection_category_map.csv` maps source objections to reporting categories |
+| New source values may appear over time | `audit_unmapped_*` models surface unmapped activity types, fields, and outcomes |
 
 This creates an idempotent pattern:
 
@@ -387,8 +387,13 @@ This creates an idempotent pattern:
 Raw Close CRM data
   -> deterministic Silver deduplication
   -> version-controlled reference mappings
-  -> Gold facts and reports
+  -> dynamic Gold field extraction by canonical name
+  -> Gold facts and reports using seeded KPI flags
   -> audit models for unmapped source drift
 ```
 
 If Close CRM introduces a new custom activity type, custom field, or outcome value, the pipeline surfaces it through the Audit layer. The value can then be reviewed, classified in the appropriate seed, and rebuilt without changing core transformation logic.
+
+The latest dbt refactor removes direct `custom.cf_*` field references from `fact_lead_funnel`. The fact model now asks for canonical fields such as `triage_outcome`, `strategy_outcome`, `contract_value`, and `setter_user_id`, while `custom_field_map.csv` controls which Close CRM field ID provides each value.
+
+The report models also avoid raw outcome-label comparisons where possible. They use `funnel_outcome_map.csv` flags and subcategories to calculate set, show, cancel, no-show, lost, and sale metrics.

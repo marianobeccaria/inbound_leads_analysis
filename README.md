@@ -139,6 +139,13 @@ The dbt pipeline is designed so the same raw inputs, mapping seeds, and model co
 
 Close CRM custom activity IDs, custom field IDs, and outcome values are dynamic. During EDA, these values were discovered from raw source data. In dbt, they are stored as version-controlled seed files instead of being hardcoded directly in transformation logic.
 
+The Gold layer uses these seeds in two ways:
+
+- `fact_lead_funnel` resolves funnel stages from `custom_activity_type_map.csv`.
+- `fact_lead_funnel` resolves custom field values from `custom_field_map.csv` by canonical field name, rather than reading fixed `custom.cf_*` keys directly.
+- Report models resolve KPI logic from `funnel_outcome_map.csv` using `canonical_field_name`, boolean outcome flags, and `outcome_subcategory`.
+- Objection reporting resolves display categories from `objection_category_map.csv`.
+
 Reference seed files:
 
 ```text
@@ -152,7 +159,9 @@ These seeds support:
 
 - Stable business mappings for funnel activity types.
 - Stable canonical names for Close CRM custom fields.
-- Normalized outcome flags for funnel KPI logic.
+- Dynamic extraction of mapped custom fields in the funnel fact table.
+- Normalized outcome flags for funnel KPI logic, such as `is_set`, `is_taken`, and `is_sale`.
+- Normalized outcome subcategories for report-specific metrics, such as `admin_cancel`, `nurture_cancel`, and `no_show`.
 - Normalized objection categories for reporting.
 - Easier review when Close CRM adds or changes values.
 
@@ -165,6 +174,8 @@ dbt/models/audit/audit_unmapped_funnel_outcomes.sql
 ```
 
 The expected result for strict audit tests is zero unmapped activity types and zero unmapped funnel outcomes. Custom field drift is surfaced for review because not every field is required for reporting.
+
+This approach keeps source-system identifiers at the reference-data layer. If a Close CRM field ID changes, the mapping can be updated in `custom_field_map.csv`. If an outcome label changes or a new outcome is introduced, the mapping can be updated in `funnel_outcome_map.csv`. The core Gold model SQL should not need to change for those source-system value changes.
 
 EDA and project documentation live outside the dbt project:
 
