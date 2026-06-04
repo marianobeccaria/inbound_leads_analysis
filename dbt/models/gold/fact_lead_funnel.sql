@@ -9,6 +9,9 @@
       the first strategy call after that contact, then to the first sale after
       that strategy call. This prevents reports from matching events out of
       chronological order.
+
+    Mapping strategy:
+      Custom activity types and custom fields are resolved through dbt seeds.
 */
 
 with custom_activity_events as (
@@ -31,7 +34,26 @@ custom_activity_type_map as (
     )
 ),
 
-funnel_events as (
+custom_field_map as (
+    select
+        custom_field_id,
+        canonical_field_name
+    from {{ ref('custom_field_map') }}
+    where lower(is_active::string) = 'true'
+    and canonical_field_name in (
+        'triage_outcome',
+        'prospecting_outcome',
+        'strategy_outcome',
+        'offer_presented',
+        'objections_faced',
+        'contract_value',
+        'cash_collected',
+        'setter_user_id',
+        'closer_user_id'
+    )
+),
+
+mapped_activity_fields as (
     select
         custom_activity_events.lead_id,
         custom_activity_events.activity_id,
@@ -41,47 +63,126 @@ funnel_events as (
         custom_activity_events.user_id,
         custom_activity_type_map.funnel_source,
         custom_activity_type_map.funnel_stage,
+        custom_field_map.canonical_field_name,
+        get(
+            custom_activity_events.activity,
+            'custom.' || custom_field_map.custom_field_id
+        ) as custom_field_value
+    from custom_activity_events
+    inner join custom_activity_type_map
+        on custom_activity_events.custom_activity_type_id
+            = custom_activity_type_map.custom_activity_type_id
+    left join custom_field_map
+        on get(
+            custom_activity_events.activity,
+            'custom.' || custom_field_map.custom_field_id
+        ) is not null
+),
 
-        -- Custom field IDs are still explicit in Phase 2. They will move behind
-        -- canonical mapping/audit logic in a later phase.
-        custom_activity_events.activity:"custom.cf_h3tYb9J6yPK7J4PMExDGsEqPCf8kBGBrRNIur2Dm5aN"::string as triage_outcome,
-        custom_activity_events.activity:"custom.cf_Q2fsrD8VpPaunZLtyiy7P3vG6qJTv0w1ESmlhdHU2ra"::string as
-prospecting_outcome,
-        custom_activity_events.activity:"custom.cf_dhJR4N7Rm6czuJthYGJP6KqUcuOzi7fqApGI7puWnMo"::string as
-strategy_outcome,
-        custom_activity_events.activity:"custom.cf_LGyzSTMPy37y87rDOUmFXlZA42HPSIpbipeT2OsQNHW"::string as
-offer_presented,
-        custom_activity_events.activity:"custom.cf_aIN5Gtqq33tUCCBxFTW63FY6d3mofnKIfFqfWPkvNla" as objections_faced,
+funnel_events as (
+    select
+        lead_id,
+        activity_id,
+        custom_activity_type_id,
+        activity_at,
+        activity_updated_at,
+        user_id,
+        funnel_source,
+        funnel_stage,
+
+        max(
+            case
+                when canonical_field_name = 'triage_outcome'
+                    then custom_field_value::string
+            end
+        ) as triage_outcome,
+
+        max(
+            case
+                when canonical_field_name = 'prospecting_outcome'
+                    then custom_field_value::string
+            end
+        ) as prospecting_outcome,
+
+        max(
+            case
+                when canonical_field_name = 'strategy_outcome'
+                    then custom_field_value::string
+            end
+        ) as strategy_outcome,
+
+        max(
+            case
+                when canonical_field_name = 'offer_presented'
+                    then custom_field_value::string
+            end
+        ) as offer_presented,
+
+        max(
+            case
+                when canonical_field_name = 'objections_faced'
+                    then custom_field_value
+            end
+        ) as objections_faced,
+
         nullif(
             regexp_replace(
-                custom_activity_events.activity:"custom.cf_vIanPjPEit6ssajmWkcprF2V1nO1itfes8hOSnjmhfT"::string,
+                max(
+                    case
+                        when canonical_field_name = 'contract_value'
+                            then custom_field_value::string
+                    end
+                ),
                 '[^0-9.-]',
                 ''
             ),
             ''
         )::number(18, 2) as contract_value,
+
         nullif(
             regexp_replace(
-                custom_activity_events.activity:"custom.cf_eyLbGJm9DYY7cuJk2otnCxhUEzK9ayEARiE81xPG5uY"::string,
+                max(
+                    case
+                        when canonical_field_name = 'cash_collected'
+                            then custom_field_value::string
+                    end
+                ),
                 '[^0-9.-]',
                 ''
             ),
             ''
         )::number(18, 2) as cash_collected,
-        coalesce(
-            custom_activity_events.activity:"custom.cf_v385AJ8HSgepKQ3rvqo4yOA3nn49eGqz39DOqojJG5M"::string,
-            custom_activity_events.user_id
-        ) as setter_user_id,
-        coalesce(
-            custom_activity_events.activity:"custom.cf_Lv5lSqLOZwLrNhe5M7kWx2mF8Ge2Z23aw5NUNhbXvVS"::string,
-            custom_activity_events.user_id
-        ) as closer_user_id
-    from custom_activity_events
-    inner join custom_activity_type_map
-        on custom_activity_events.custom_activity_type_id
-            = custom_activity_type_map.custom_activity_type_id
-),
 
+        coalesce(
+            max(
+                case
+                    when canonical_field_name = 'setter_user_id'
+                        then custom_field_value::string
+                end
+            ),
+            user_id
+        ) as setter_user_id,
+
+        coalesce(
+            max(
+                case
+                    when canonical_field_name = 'closer_user_id'
+                        then custom_field_value::string
+                end
+            ),
+            user_id
+        ) as closer_user_id
+    from mapped_activity_fields
+    group by
+        lead_id,
+        activity_id,
+        custom_activity_type_id,
+        activity_at,
+        activity_updated_at,
+        user_id,
+        funnel_source,
+        funnel_stage
+),
 
 initial_events as (
     select *
@@ -111,7 +212,6 @@ strategy_matches as (
         ) as strategy_match_rank
     from initial_events
     left join funnel_events as strategy_events
-        -- Match the first strategy event for the same lead after the initial contact.
         on initial_events.lead_id = strategy_events.lead_id
         and strategy_events.funnel_stage = 'strategy'
         and strategy_events.activity_at >= initial_events.activity_at
@@ -132,7 +232,6 @@ sale_matches as (
         ) as sale_match_rank
     from strategy_matches
     left join funnel_events as sale_events
-        -- Match the first sale event for the same lead after the matched strategy call.
         on strategy_matches.lead_id = sale_events.lead_id
         and sale_events.funnel_stage = 'sale'
         and strategy_matches.strategy_at is not null
@@ -141,7 +240,6 @@ sale_matches as (
 )
 
 select
-    -- Stable path key based on the event IDs that define this funnel path.
     md5(
         concat_ws(
             '|',
