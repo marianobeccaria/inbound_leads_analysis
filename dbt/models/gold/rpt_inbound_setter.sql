@@ -51,7 +51,13 @@ setter_rollup as (
             and lower(coalesce(strategy_is_taken::string, 'false')) = 'true'
         ) as strategy_calls_taken,
 
-        count_if(offer_presented is not null and offer_presented <> '') as offers_presented,
+        count_if(
+            strategy_activity_id is not null
+            and lower(coalesce(strategy_is_taken::string, 'false')) = 'true'
+            and offer_presented is not null
+            and offer_presented <> ''
+        ) as offers_presented,
+
         count(sale_activity_id) as total_sales,
         sum(contract_value) as total_contract_value,
         sum(cash_collected) as total_cash_collected
