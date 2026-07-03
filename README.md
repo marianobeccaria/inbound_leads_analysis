@@ -43,7 +43,7 @@ The final solution should support BI dashboards for sales stakeholders, helping 
 PostgreSQL Source Database
 (raw Close CRM tables)
         |
-        | 1. Extract raw tables using Python / SQL
+        | 1. Extract raw tables using SQL
         v
 Amazon S3 Landing Zone
 (raw JSON / CSV / Parquet files partitioned by load date)
